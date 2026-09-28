@@ -1,0 +1,27 @@
+name: Mac runner smoke test
+
+on:
+  push:
+    branches:
+      - main
+      - 'ykshin/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: embeddedrust-mac-runner
+  cancel-in-progress: false
+
+jobs:
+  runner-smoke-test:
+    if: github.actor == 'yongkyuns'
+    runs-on: [self-hosted, macOS, X64, EmbeddedRust]
+    timeout-minutes: 5
+    steps:
+      - name: Verify the trusted runner is available
+        run: |
+          echo "Trusted push by $GITHUB_ACTOR on $GITHUB_REF"
+          sw_vers
+          uname -m
+          git --version
