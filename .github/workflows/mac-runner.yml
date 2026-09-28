@@ -21,7 +21,42 @@ jobs:
     steps:
       - name: Verify the trusted runner is available
         run: |
+          set -eu
           echo "Trusted push by $GITHUB_ACTOR on $GITHUB_REF"
           sw_vers
           uname -m
           git --version
+
+      - name: Probe rustcam runner bootstrap prerequisites
+        shell: bash
+        run: |
+          set -eu
+          probe() {
+            name="$1"
+            shift
+            if command -v "$1" >/dev/null 2>&1; then
+              printf '%-12s present: %s\n' "$name" "$(command -v "$1")"
+              "$@" || true
+            else
+              printf '%-12s absent\n' "$name"
+            fi
+          }
+
+          probe brew brew --version
+          probe docker docker version --format 'client={{.Client.Version}} server={{.Server.Version}}'
+          probe colima colima status
+          probe limactl limactl --version
+          probe multipass multipass version
+          probe gh gh --version
+          probe python3 python3 --version
+
+          if command -v gh >/dev/null 2>&1; then
+            echo "gh authentication status (token values are not printed):"
+            gh auth status --hostname github.com || true
+          fi
+
+          echo "Virtualization capability:"
+          sysctl -n kern.hv_support 2>/dev/null || true
+
+          echo "Runner home and working directory ownership:"
+          stat -f '%Su:%Sg %Sp %N' "$HOME" "$GITHUB_WORKSPACE" || true
