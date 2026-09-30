@@ -17,7 +17,7 @@ See [hal-platform-architecture.md](hal-platform-architecture.md).
 ## Run with mock capability providers
 
 ~~~sh
-cargo +1.90.0 build --locked \
+cargo build --locked \
   -p nxrs-event-demo -p nxrs-imu -p nxrs-gnss \
   --features nxrs-imu/mock,nxrs-gnss/mock --bin event-demo
 target/debug/event-demo --duration-ms 2000
@@ -187,7 +187,7 @@ explicit instance ID is required.
 Run it with:
 
 ~~~sh
-cargo +1.90.0 build --locked \
+cargo build --locked \
   -p nxrs-dual-imu-demo -p nxrs-imu \
   --features nxrs-imu/mock --bin dual-imu-demo
 target/debug/dual-imu-demo

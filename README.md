@@ -68,7 +68,7 @@ service-owned HAL resources**. The app knows only services and their connections
 it does not depend on IMU/GNSS HALs, mock providers, or concrete devices.
 
 ```sh
-cargo +1.90.0 build --locked \
+cargo build --locked \
   -p nxrs-event-demo -p nxrs-imu -p nxrs-gnss \
   --features nxrs-imu/mock,nxrs-gnss/mock --bin event-demo
 target/debug/event-demo --duration-ms 2000
@@ -96,7 +96,7 @@ platform both instances begin at sequence 1, proving there is no shared singleto
 sensor state.
 
 ~~~sh
-cargo +1.90.0 build --locked \
+cargo build --locked \
   -p nxrs-dual-imu-demo -p nxrs-imu \
   --features nxrs-imu/mock --bin dual-imu-demo
 target/debug/dual-imu-demo
