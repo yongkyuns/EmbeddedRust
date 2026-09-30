@@ -1,0 +1,23 @@
+[package]
+name = "nxrs-rt-bench"
+version.workspace = true
+edition.workspace = true
+build = "build.rs"
+
+[package.metadata.nxrs.firmware]
+bin = "rt-bench"
+command = "rt_bench"
+priority = 100
+stack-size = 65536
+
+[dependencies]
+nxrs-service-event = { path = "../../../service/event" }
+
+[[bin]]
+name = "rt-bench"
+path = "src/main.rs"
+
+
+[[bin]]
+name = "rt-minimal"
+path = "src/minimal.rs"

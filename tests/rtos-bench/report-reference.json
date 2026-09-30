@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "source": "Jacob Beningo, RTOS 2026 Performance Report, user-supplied PDF",
+  "pdf_sha256": "77364c59443f0ef218ece28b679c5efaa9f93cfbfaa31b6964abd3ee5eaa2dec",
+  "board": "ST B-L475E-IOT01A, STM32L475VG",
+  "core": "Cortex-M4F",
+  "clock_hz": 80000000,
+  "nuttx_version": "12.13.0",
+  "compiler": "GNU Tools for STM32 13.3.rel1",
+  "windows": {
+    "seconds": 30,
+    "consecutive": 2,
+    "pdf_page": 11
+  },
+  "optimization": {
+    "headline": "uniform -Ofast, PDF p14",
+    "appendix_L": "-O2, PDF p92",
+    "resolved": false
+  },
+  "raw_counts_available_for_all_throughput_tests": false,
+  "exact_author_adapter_available": false,
+  "throughput_percent_of_category_best": [
+    {
+      "test": "basic",
+      "nuttx": 99.8,
+      "freertos": 99.8,
+      "pdf_page": 23
+    },
+    {
+      "test": "cooperative",
+      "nuttx": 16.5,
+      "freertos": 75.7,
+      "pdf_page": 25,
+      "nuttx_valid": false,
+      "caveat_pdf_page": 26
+    },
+    {
+      "test": "preemptive",
+      "nuttx": 24.9,
+      "freertos": 44.5,
+      "pdf_page": 26
+    },
+    {
+      "test": "memory",
+      "nuttx": 12,
+      "freertos": 19.3,
+      "pdf_page": 28
+    },
+    {
+      "test": "message",
+      "nuttx": 21,
+      "freertos": 40.2,
+      "pdf_page": 29
+    },
+    {
+      "test": "synchronization",
+      "nuttx": 82.1,
+      "freertos": 37.6,
+      "pdf_page": 30
+    },
+    {
+      "test": "interrupt-processing",
+      "nuttx": 58.7,
+      "freertos": 46.4,
+      "pdf_page": 32
+    },
+    {
+      "test": "interrupt-preemption",
+      "nuttx": 24.4,
+      "freertos": 34.7,
+      "pdf_page": 33
+    }
+  ],
+  "nuttx_latency_ns": {
+    "pdf_page": 36,
+    "printed_page": 31,
+    "samples_approximately": 740,
+    "irq": {
+      "median": 1096,
+      "p99": 1099,
+      "max_observed": 2891
+    },
+    "dispatch": {
+      "median": 8873,
+      "p99": 8879,
+      "max_observed": 12105
+    },
+    "irq_boundary": "hardware timer stimulus to ISR marker",
+    "dispatch_boundary": "ISR marker to awakened task marker",
+    "worst_case_bound": false
+  },
+  "comparison_policy": "Reference/context only. Use it to identify suspicious categories, not to reproduce its exact NuttX version. Current nxrs NuttX is characterized directly; no clock scaling, invented raw counts, or host/QEMU performance claims."
+}
