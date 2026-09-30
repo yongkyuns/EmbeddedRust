@@ -1,0 +1,50 @@
+name: Typed USERLED HAL
+
+on:
+  pull_request:
+    paths:
+      - 'hal/led/**'
+      - 'hal/common/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'tools/check-architecture.py'
+      - 'tests/host/test-userled-ffi.py'
+      - '.github/workflows/userled-hal.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.90.0 --profile minimal --target thumbv6m-none-eabi
+      - name: Portable contracts, no implicit provider, and mock selection
+        run: |
+          cargo +1.90.0 test --locked -p nxrs-led-api -p nxrs-led-mock -p nxrs-led
+          cargo +1.90.0 test --locked -p nxrs-led --features mock
+      - name: Real Rust provider with host-only private control stubs
+        run: cargo +1.90.0 test --locked -p nxrs-led-nuttx --lib -- --test-threads=1
+      - name: Actual C helper with explicitly fake host headers
+        run: |
+          python3 tests/host/test-userled-ffi.py
+          CC=clang python3 tests/host/test-userled-ffi.py
+      - name: no_std contract and mock on Cortex-M0
+        run: |
+          cargo +1.90.0 check --locked -p nxrs-led --target thumbv6m-none-eabi
+          cargo +1.90.0 check --locked -p nxrs-led --features mock --target thumbv6m-none-eabi
+      - name: Architecture and excluded-provider graph
+        env:
+          RUSTUP_TOOLCHAIN: 1.90.0
+        run: |
+          python3 tools/check-architecture.py
+          cargo tree --locked -p nxrs-led --features mock --edges normal,build > /tmp/led-tree.txt
+          cat /tmp/led-tree.txt
+          if grep -q 'nxrs-led-nuttx' /tmp/led-tree.txt; then
+            echo 'Unselected NuttX provider leaked into mock image graph' >&2
+            exit 1
+          fi

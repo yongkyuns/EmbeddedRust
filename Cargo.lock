@@ -144,6 +144,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "nxrs-led"
+version = "0.1.0"
+dependencies = [
+ "nxrs-led-api",
+ "nxrs-led-mock",
+ "nxrs-led-nuttx",
+]
+
+[[package]]
+name = "nxrs-led-api"
+version = "0.1.0"
+dependencies = [
+ "nxrs-hal-common",
+]
+
+[[package]]
+name = "nxrs-led-mock"
+version = "0.1.0"
+dependencies = [
+ "nxrs-led-api",
+]
+
+[[package]]
+name = "nxrs-led-nuttx"
+version = "0.1.0"
+dependencies = [
+ "nxrs-led-api",
+]
+
+[[package]]
 name = "nxrs-native-integration"
 version = "0.1.0"
 dependencies = [
