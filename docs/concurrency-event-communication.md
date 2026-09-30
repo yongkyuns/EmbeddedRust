@@ -1,162 +1,223 @@
 # Concurrency and event communication architecture
 
-> **Status: design discussion, not an implemented framework.** This revision
-> maps the ownership model to Rust `std` and existing libraries. The defaults
-> below are the current proposal; lifecycle details, readiness integration and
-> the final public API still need discussion. No production code or dependencies
-> are changed by this document.
+> **Status: design discussion, not an implemented framework.** The proposed
+> direction is Rust-native event communication with HAL-owned acquisition and
+> protocol processing. Public helper APIs, lifecycle details and capacity policy
+> remain open. This document changes no production code or dependencies.
 
 ## Direction
 
-> **Messages are for coordination, not routine data flow.**
+> **Keep tightly coupled processing together. Use messages at meaningful
+> boundaries, including normalized hardware events from the HAL.**
 
-A high-rate exchange is a reason to reconsider the ownership boundary, not a
-reason to start optimizing a message graph. Keep tightly coupled processing in
-one owner with direct calls and borrowed data. Introduce independent execution
-only for a concrete scheduling, resource, latency or lifecycle requirement.
+Inter-service communication is for coordination, not for constructing a
+fine-grained graph of routine sample-processing stages. Hardware delivery is a
+legitimate asynchronous boundary: a completed GNSS measurement can be an event
+in the receiving service's inbox even though measurements occur periodically.
+Do not confuse that boundary with relaying every sample between small services.
 
-The app/service layer is Rust, so the default should be Rust-native:
+The app/service layer is Rust, so the defaults should be Rust-native:
 
 | Concern | Proposed default |
 | --- | --- |
-| Service state | An ordinary owning struct, with synchronous helper modules |
-| Independent execution | `std::thread::Builder`; no mandatory actor trait |
-| Commands and important events | Service-defined enums with bounded payloads |
-| Messages from multiple services | One bounded inbox per receiving owner, using a destination-local enum |
-| Message-only wait | One `recv()` or deadline-aware `recv_timeout()` |
-| Existing separate inboxes | `crossbeam-channel::select!` when separate queues are justified |
-| Messages plus device readiness | Typed queue plus a wake source in one I/O wait set |
-| Bulk data | Local borrows, or explicitly budgeted owned buffers/rings across a justified boundary |
+| Service state | An ordinary owning struct with synchronous helper modules |
+| Independent service execution | `std::thread::Builder`; no mandatory actor trait |
+| Device waiting, acquisition and parsing | HAL provider/driver implementation, not the service loop |
+| HAL delivery | Bounded device-independent events sent directly to the owning service's inbox |
+| Commands and peer events | Service-defined enums with bounded payloads |
+| Multiple event sources | One destination-owned bounded inbox with a local enum |
+| Service wait | One `recv()` or deadline-aware `recv_timeout()` for HAL, peer and command events |
+| Existing separate inboxes | Crossbeam selection only when separate queues are justified |
+| Bulk data | Local borrows or budgeted owning buffers/rings, with integrated notification |
 
-This assumes an in-process application with qualified `std` threading support.
-It does not assume that every desktop crate supports NuttX, or that ordinary
-browser WASM supports blocking Rust threads.
+This assumes an in-process application on qualified `std` execution targets.
+It does not assume every desktop crate supports NuttX or that ordinary browser
+WASM supports blocking Rust threads.
 
 ## Ownership boundaries, not a service graph
 
-One active owner may contain several reusable modules, services and HAL
-capabilities. A module, service, device or crate does not automatically need a
-thread or an inbox. Reusability comes from normal Rust APIs, not from scheduling
-every reusable component independently.
+A service may contain several reusable processing modules and own lifecycle
+handles for several HAL capabilities. The service owns application state; an
+active HAL provider owns its acquisition/parsing state and low-level resources.
+Owning a capability's lifecycle handle does not require servicing its UART on
+the service thread.
 
-For navigation, acquisition, calibration and fusion normally share an owner:
+For navigation, the intended boundary is:
 
 ~~~text
-IMU/GNSS HAL -> preprocessing -> fusion -> local consumers
-                 one owner; ordinary Rust calls
+GNSS device -> HAL acquisition + parser -> normalized event -> service inbox
+peer service ------------------------------ semantic event -> same inbox
+application -------------------------------------- command -> same inbox
+
+service dispatch -> calibration / fusion / health (ordinary local calls)
 ~~~
 
-Sparse commands and semantic events cross that owner's boundary: start/stop,
-mode changes, calibration completion, GNSS loss/recovery and faults. A sample
-produced each processing cycle is not automatically a service event.
+Do not introduce an additional GNSS relay service merely to forward the HAL's
+already-normalized result to navigation. A separate service is justified only
+when it owns useful domain behavior or an independent lifecycle/scheduling need.
 
-Another owner can be justified by independent scheduling, bounded buffering,
-exclusive resource lifecycle, or isolating expensive/blocking work. For example,
-a storage writer may need a bounded worker even when recording policy stays in
-navigation. Do not put unpredictable blocking storage calls into the shared
-owner merely to avoid a thread. A separate Rust thread also does not establish
-memory-fault containment; process/MPU isolation is a different decision.
+One module, device, capability or crate does not automatically require a thread.
+Independent execution should have a resource, scheduling or latency reason.
+A storage writer may need a bounded worker while recording policy remains in
+navigation. Do not introduce unpredictable blocking storage into navigation
+merely to avoid a thread. Separate threads do not establish memory-fault
+containment; process/MPU isolation is a different decision.
 
-The review question remains:
+The review question remains: if A sends B data on every normal processing cycle,
+should their application processing share an owner? Device acquisition can still
+be independently hosted behind HAL without splitting the application algorithm.
 
-> If A sends B a message every time A performs normal work, should A and B share
-> an owner? If not, what scheduling or ownership requirement justifies the split?
+## HAL owns device waiting, parsing and normalization
+
+For GNSS, the HAL implementation should own opening/configuring the selected
+receiver, waiting/reading, buffering partial input, validating frames, parsing
+NMEA or UBX as appropriate, and producing the common GNSS contract. Polling,
+descriptors, serial framing and receiver-specific recovery stay below the
+portable service boundary. Reuse parser/driver implementations where suitable;
+this proposal does not require writing new protocol parsers.
+
+Parsing code can live in a reusable driver/protocol crate used by the HAL
+provider. "In the HAL" means hidden behind the capability contract, not that
+all parsing must be embedded in one facade source file. The service must not
+branch on NMEA versus UBX or depend on a physical receiver model.
+
+| Responsibility | Owner |
+| --- | --- |
+| UART/socket/device wait and cancellation | HAL provider/target support |
+| Byte framing, checksum validation, protocol decoding | Provider/driver behind HAL |
+| Assemble and timestamp a device-independent GNSS solution | GNSS HAL |
+| Queue admission of a HAL event | Injected typed sink and explicit delivery policy |
+| Sensor fusion, application modes and product decisions | Service |
+| Product composition and top-level lifecycle | Ordinary application `main()` |
+
+The common contract must define units, coordinate/time frames, measurement time
+versus arrival time, validity and optional fields. Do not fabricate fields absent
+from a source protocol, merge incompatible measurement epochs, or pass parser-
+owned temporary references across threads. Device independence does not mean
+pretending every receiver provides the same information.
+
+HAL status describes capability facts, such as a solution becoming unavailable
+or an acquisition failure. Application reactions, such as entering a degraded
+navigation mode, remain service decisions.
+
+### Does the HAL need its own thread?
+
+An event-driven HAL owns the execution needed to make progress. A dedicated
+`std` worker that waits, reads, parses and posts normalized events is a reasonable
+starting point for a blocking serial GNSS provider. It does useful acquisition
+work, not merely queue forwarding.
+
+Threading is nevertheless a provider implementation choice, not one thread per
+capability or parser. A provider may use an existing driver worker, a shared HAL
+I/O loop, or platform callbacks where appropriate. A native replay/mock provider
+can emit the same events without a UART parser. A browser provider can use its
+available callback/worker machinery under the separately qualified browser
+profile. The service event contract must not change with that choice.
+
+The HAL must not invoke service handlers on its worker/callback thread. Its
+injected sink only translates and enqueues; the service mutates its state after
+receiving the event. No std channel operation is assumed ISR-safe: interrupts
+must hand off through a target-qualified deferred path before using such a sink.
 
 ## Idiomatic Rust service shape
 
-Use an ordinary struct for private state and resources, with methods that take
-`&mut self`. The following is illustrative domain code, not a framework API:
+Use an owning struct with `&mut self` methods. Illustrative domain code:
 
 ~~~rust,ignore
-struct Navigation<I, G> {
-    imu: I,
-    gnss: G,
+struct Navigation {
+    gnss: GnssSession, // capability lifecycle/control, not raw UART access
     calibration: Calibration,
     fusion: Fusion,
     health: Health,
 }
 
-impl<I: Imu, G: Gnss> Navigation<I, G> {
-    fn on_imu_ready(&mut self) -> Result<(), Error> {
-        let sample = self.imu.try_read()?;
-        if let Some(sample) = sample {
-            let corrected = self.calibration.correct(sample);
-            self.fusion.update_imu(&corrected);
-            self.health.observe_imu(&corrected);
+impl Navigation {
+    fn on_gnss(&mut self, event: gnss::Event) {
+        match event {
+            gnss::Event::Solution(solution) => {
+                self.fusion.update_gnss(&solution);
+                self.health.observe_gnss(&solution);
+            }
+            gnss::Event::Unavailable => self.health.gnss_unavailable(),
         }
-        Ok(())
     }
 }
 ~~~
 
-Move that state into its owner thread when independent execution is needed.
-Do not default to `Arc<Mutex<Navigation>>` or expose mutable state to senders.
-`Builder::spawn` already supplies fallible spawning, names, stack configuration,
-and the `Send + 'static` requirements on captured values; privately owned state
-need not be `Sync` merely to move into a thread. [Thread builder][thread-builder]
+`GnssSession`, event variants and methods here are proposed shapes, not existing
+nxrs APIs. The receiver owns coherent typed values; it does not call `poll()`,
+read bytes, run a parser, or wait on a second GNSS receiver from this handler.
 
-Keep two capabilities separate: a cloneable command handle for authorized
-producers, and a unique lifecycle/task handle retained by the composition owner.
-The latter owns joining and completion. Ordinary `main()` remains the composition
-root; a service can continue acquiring its HAL resources during `start()`.
+Move the service state into its thread where needed. Do not default to
+`Arc<Mutex<Navigation>>` or expose mutable service state to senders.
+`Builder::spawn` supplies fallible spawning, names, stack configuration and
+`Send + 'static` requirements on captured values; private state need not be
+`Sync` simply to move into a thread. [Thread builder][thread-builder]
 
-No universal `ActiveObject<Input, Output, Context, State, ...>` trait, custom
-scheduler, async runtime or replacement thread API is required. Repeated run-loop
-mechanics may become a small helper accepting closures or a narrow contract after
-real services demonstrate the need.
+Keep a cloneable command handle separate from the unique lifecycle/task handle.
+A service normally acquires its HAL capability during `start()`, registers a
+narrow event sink and retains the returned lifecycle handle. No platform launcher,
+mandatory actor trait, custom scheduler or universal service interface is needed.
 
-## Typed, bounded service contracts
+## Typed contracts and destination-owned fan-in
 
-Each service can expose its own public `Command` and `Event` enums. They describe
-requests and important transitions, not periodic stream outputs. Keep contract
-types independent of concrete providers; importing an event type should not
-select its producer's hardware implementation.
+Services expose command and semantic-event enums. HAL capabilities expose their
+own device-independent data/status event enums. A receiver's private inbox enum
+combines only the contracts it consumes; there is no system-wide message enum.
 
-Use a typed in-process channel by default. `std::sync::mpsc::sync_channel` provides
-bounded storage, cloneable producer endpoints and one receiver. Values move into
-the channel; messages need not implement `Copy` or `Clone`. No enum codec,
-`#[repr(C)]`, byte casting or serialization is required for this path.
+The HAL must not depend on the receiving service or its private inbox type.
+Inject a narrow sink such as `Fn(gnss::Event) -> Result<(), PostError<gnss::Event>>`.
+For a worker-owned sink, require the appropriate `Send + 'static` bounds at start.
+Use ordinary generics or a small helper, not a dynamic message registry.
+
+Capability data/event types may remain `no_std`. A std-backed delivery/lifecycle
+adapter can sit in the facade/provider or a small neutral support crate. Do not
+make HAL depend upward on a service implementation to obtain a channel wrapper.
+The exact placement remains open; no dependency-checker rules change in this PR.
+
+`std::sync::mpsc::sync_channel` provides bounded storage, cloned senders and one
+receiver. Cloning a sender does not create another queue. Events move as Rust
+values; no `Copy`, `Clone`, enum codec, byte casting or `#[repr(C)]` is required.
 [Bounded channel][std-channel], [sender operations][std-sender]
 
-Set a nonzero capacity explicitly. Bound the payload as well as the event count:
-small inline fields, fixed-capacity values, and only explicitly budgeted handles.
-`size_of::<Event>()` does not bound heap storage reachable through a pointer. An
-unrestricted `Vec` or `String` in a small enum is not a complete memory budget.
-[Value size][size-of]
+Set a nonzero capacity. Bound both event count and payload: inline values,
+fixed-capacity fields or explicitly budgeted handles. `size_of::<Event>()` does
+not account for storage behind pointers. [Value size][size-of]
 
-Use `try_send` during normal owner dispatch. Preserve ownership of a rejected
-message and distinguish full from disconnected. Admission means queued, not
-processed or acknowledged. A thin nxrs wrapper may rename these outcomes, but
-should not replace the existing queue implementation. [Sender operations][std-sender]
-
-## Messages from different services at one wait point
-
-**The default is destination-owned fan-in, not one outbound queue per service.**
-A receiving owner defines a local inbox enum containing just the command/event
-contracts it consumes. Each producer gets a narrow endpoint that wraps its event
-and submits it directly into this same bounded inbox.
+The connection is direct:
 
 ~~~text
-navigation::Event -> typed adapter --+
-recording::Event  -> typed adapter --+-> bounded Controller inbox -> recv()
-ControllerCommand -> command handle-+
+GNSS HAL   -> sink wraps Inbox::Gnss(event) ------+
+recording  -> sink wraps Inbox::Recording(event)-+-> one bounded inbox -> recv()
+commands   -> handle wraps Inbox::Command(cmd) --+
 ~~~
 
-The adapters are ordinary calls on the producer thread. They do not run the
-controller's behavior, create relay threads, or add intermediate queues. Each
-admitted event crosses one queue boundary.
+There is no HAL-output queue that another thread drains into a service queue.
+The source-typed sink executes on the producer, not on a new relay thread, and
+never runs the receiving service's behavior. Each admitted event crosses one
+queue boundary.
 
-Here is a self-contained message-only sketch using real standard-library APIs.
-It deliberately contains only semantic events; it is not the proposed runtime
-implementation or a timing/target qualification test.
+### Self-contained std-only fan-in illustration
+
+This demonstrates delivery of a normalized HAL result, a peer service event and
+a command to one wait point. The synthetic worker does not implement real GNSS
+acquisition or parsing; the timestamp domain below is an arbitrary test domain.
+It is not an implementation of the proposed nxrs HAL API.
 
 ~~~rust
 use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
 
-mod navigation {
+mod gnss {
+    #[derive(Debug)]
+    pub struct Solution {
+        pub sequence: u64,
+        pub measurement_time_ms: u64,
+        pub velocity_ned_mps: Option<[f32; 3]>,
+    }
+
     #[derive(Debug)]
     pub enum Event {
-        GnssLost,
+        Solution(Solution),
     }
 }
 
@@ -169,50 +230,51 @@ mod recording {
 
 #[derive(Debug)]
 enum Command {
-    Shutdown,
+    BeginCalibration,
 }
 
-// Private to this destination, NOT a system-wide message enum.
 #[derive(Debug)]
 enum Inbox {
-    Command(Command),
-    Navigation(navigation::Event),
+    Gnss(gnss::Event),
     Recording(recording::Event),
+    Command(Command),
 }
 
 #[derive(Default)]
-struct Controller {
-    gnss_lost: bool,
+struct Service {
+    last_fix: Option<gnss::Solution>,
     storage_full: bool,
+    calibration_requested: bool,
 }
 
-impl Controller {
+impl Service {
     fn run(mut self, inbox: Receiver<Inbox>) -> Self {
-        while let Ok(message) = inbox.recv() { // sole blocking wait
-            match message {
-                Inbox::Navigation(navigation::Event::GnssLost) => {
-                    self.gnss_lost = true;
+        while let Ok(event) = inbox.recv() { // the only blocking service wait
+            match event {
+                Inbox::Gnss(gnss::Event::Solution(fix)) => {
+                    self.last_fix = Some(fix); // real service calls fusion here
                 }
                 Inbox::Recording(recording::Event::StorageFull) => {
                     self.storage_full = true;
                 }
-                Inbox::Command(Command::Shutdown) => break,
+                Inbox::Command(Command::BeginCalibration) => {
+                    self.calibration_requested = true;
+                }
             }
         }
         self
     }
 }
 
-// An injected sink exposes only navigation's own public event type.
-fn navigation_sink(
+fn gnss_sink(
     tx: SyncSender<Inbox>,
-) -> impl Fn(navigation::Event) -> Result<(), TrySendError<navigation::Event>> {
-    move |event| match tx.try_send(Inbox::Navigation(event)) {
+) -> impl Fn(gnss::Event) -> Result<(), TrySendError<gnss::Event>> + Send {
+    move |event| match tx.try_send(Inbox::Gnss(event)) {
         Ok(()) => Ok(()),
-        Err(TrySendError::Full(Inbox::Navigation(event))) => {
+        Err(TrySendError::Full(Inbox::Gnss(event))) => {
             Err(TrySendError::Full(event))
         }
-        Err(TrySendError::Disconnected(Inbox::Navigation(event))) => {
+        Err(TrySendError::Disconnected(Inbox::Gnss(event))) => {
             Err(TrySendError::Disconnected(event))
         }
         _ => unreachable!("try_send returns the value passed to this call"),
@@ -221,106 +283,76 @@ fn navigation_sink(
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (tx, inbox) = mpsc::sync_channel::<Inbox>(8);
-    let report_navigation = navigation_sink(tx.clone());
-    let recording_tx = tx.clone();
+    let emit_gnss = gnss_sink(tx.clone());
+    let provider = std::thread::Builder::new()
+        .name("synthetic-gnss-hal".into())
+        .spawn(move || {
+            emit_gnss(gnss::Event::Solution(gnss::Solution {
+                sequence: 1,
+                measurement_time_ms: 1000,
+                velocity_ned_mps: Some([1.0, 0.0, 0.0]),
+            }))
+        })?;
 
-    // Smoke illustration: queue a finite sequence, then run the owner.
-    // Production passes narrow sinks to independently running services;
-    // recording gets the same source-typed adapter as navigation.
-    report_navigation(navigation::Event::GnssLost)?;
-    recording_tx.try_send(Inbox::Recording(recording::Event::StorageFull))?;
-    tx.try_send(Inbox::Command(Command::Shutdown))?;
+    // Production recording/command endpoints use equally narrow adapters.
+    tx.try_send(Inbox::Recording(recording::Event::StorageFull))?;
+    tx.try_send(Inbox::Command(Command::BeginCalibration))?;
+    drop(tx);
 
-    let state = Controller::default().run(inbox);
-    assert!(state.gnss_lost && state.storage_full);
+    // The finite fixture ends when all producers drop their senders.
+    // This is not a production shutdown protocol for service-owned HALs.
+    let state = Service::default().run(inbox);
+    provider.join().map_err(|_| "synthetic HAL worker panicked")??;
+    let fix = state.last_fix.expect("GNSS result was admitted");
+    assert_eq!(fix.sequence, 1);
+    assert_eq!(fix.measurement_time_ms, 1000);
+    assert_eq!(fix.velocity_ned_mps, Some([1.0, 0.0, 0.0]));
+    assert!(state.storage_full && state.calibration_requested);
     Ok(())
 }
 ~~~
 
-Cloning `SyncSender` does not create another queue: the clones address the same
-receiver. A blocked receive wakes for an admitted message from any of those
-senders. Do not sequentially call `navigation_rx.recv()` and
-`recording_rx.recv()`; waiting on an idle first channel could conceal work on the
-second. [Bounded channel][std-channel], [receiver operations][std-receiver]
+An admitted message from any producer wakes the same receive operation.
+Do not sequentially block on a GNSS receiver and a command receiver, and do not
+return raw descriptor readiness to portable service code.
+[Receiver operations][std-receiver]
 
-The service need not know `Controller` or `Inbox`. It can accept an injected
-`Fn(Event) -> Result<(), TrySendError<Event>> + Send + 'static`, or an equivalent
-small typed sink. The explicit adapter above preserves the source event on
-rejection; a plain one-way `Into<Inbox>` conversion does not by itself supply that
-error mapping. Choose a helper only after this boilerplate repeats. No `Any`,
-`Box<dyn Message>`, proc macro or subscription registry is necessary.
+The adapter preserves the original typed event on full/disconnected rejection;
+a one-way `Into<Inbox>` conversion alone does not supply that error mapping.
+Successful admission means queued, not processed. Normal producers should use
+`try_send`, with explicit handling rather than silently discarding errors.
+[Sender operations][std-sender]
 
-`Inbox` belongs to this destination/composition. Another destination has its own
-enum. A reusable consumer that should not depend on producer types can instead
-receive its own commands, with semantic translation in application wiring. Do
-not solve module dependency cycles by inventing a global enum.
+The service creates its inbox before enabling HAL production. If startup later
+fails, it must stop any producers already started. A `Ready` notification needs a
+defined meaning: worker started, device configured and first valid solution are
+not equivalent milestones.
 
-Multiple instances can be distinguished with local variants such as
-`PrimaryNavigation(...)` and `BackupNavigation(...)`, or a bounded instance tag.
-A sender clone is not a broadcast subscription. Explicit fan-out to multiple
-owners, when justified, needs a policy for partial admission and does not create
-a system-wide publish/subscribe facility.
+Multiple instances can use destination-local variants or bounded tags. Another
+consumer has its own inbox enum, or receives its own commands through semantic
+translation. A cloned sender is not a subscription; fan-out requires an explicit
+partial-admission policy. Keep those connections out of the GNSS protocol code.
 
-A common inbox shares capacity across senders and uses slots large enough for
-its enum. It does not reserve capacity for each source or make racing producers'
-arrival order deterministic. Encode correlation/ordering only when the domain
-needs it; avoid treating scheduling order as measurement-time order.
+## One service wait, with optional deadlines
 
-## Alternative: select across existing typed queues
+Normalized HAL events, commands and peer events all use the same service inbox.
+A plain `recv()` is sufficient when the service has no independent deadline.
+No generic service-side I/O reactor or separate HAL receive loop is required.
 
-A **single wait point does not require a single physical queue**. Where separate
-queue capacities, source lifetimes or existing APIs are useful, reuse
-`crossbeam-channel::select!` (or `Select` for a dynamic set). The receive arms may
-have different payload types. [Crossbeam selection][crossbeam-select]
-
-~~~rust,ignore
-loop {
-    crossbeam_channel::select! {
-        recv(navigation_events) -> event => match event {
-            Ok(event) => controller.on_navigation(event),
-            Err(_) => break, // chosen policy: a required source closed
-        },
-        recv(recording_events) -> event => match event {
-            Ok(event) => controller.on_recording(event),
-            Err(_) => break,
-        },
-        recv(commands) -> command => match command {
-            Ok(command) => controller.on_command(command),
-            Err(_) => break,
-        },
-    }
-}
-~~~
-
-This is one blocking selection, not round-robin polling or sequential waits.
-These must be Crossbeam receivers, not `std::mpsc::Receiver` values. Normal
-`select!` chooses randomly among simultaneously ready operations; it is not a
-hard fairness, deadline or priority guarantee. Disconnected channels are ready
-too: handle closure by stopping as above, or removing/disabling an optional arm.
-Ignoring repeated receive errors can otherwise produce a busy loop.
-[Crossbeam selection][crossbeam-select]
-
-Keep exactly one consumer for each active-owner inbox even though Crossbeam
-allows receiver cloning. Prefer the existing std-backed channel for simple
-fan-in; select is an available alternative, not a reason to add queues or migrate
-all services. Neither alternative requires Rust async `.await`.
-
-## Deadlines at the same wait point
-
-For a message-only owner with a deadline, use `recv_timeout()` with the remaining
-time until an absolute `Instant`. Check due deadlines between dispatches, not
-only when a receive reports timeout: continuous message traffic can otherwise
-starve the timer. Do not reset the deadline after every incoming event.
+When it has a deadline, use `recv_timeout()` with the remaining time until an
+absolute `Instant`. Check due deadlines between events, not only after a timeout;
+continuous GNSS or peer traffic must not indefinitely defer time-based work.
+Do not reset the deadline merely because another event arrived.
 [Receiver operations][std-receiver]
 
 ~~~rust,ignore
 loop {
     if Instant::now() >= next_deadline {
-        on_deadline(); // bounded work; advance with an explicit overrun policy
+        on_deadline(); // bounded work and an explicit missed-period policy
         next_deadline = next_deadline_after(Instant::now());
     }
     let remaining = next_deadline.saturating_duration_since(Instant::now());
-    match inbox.recv_timeout(remaining) { // sole blocking wait
+    match inbox.recv_timeout(remaining) { // the single blocking service wait
         Ok(event) => dispatch(event),
         Err(RecvTimeoutError::Timeout) => continue,
         Err(RecvTimeoutError::Disconnected) => break,
@@ -328,185 +360,187 @@ loop {
 }
 ~~~
 
-Deadline computation and missed-period policy remain service-specific. There is
-no mandatory timer thread, periodic tick-message producer or custom clock HAL.
-Use `std::time`; behavior tests can supply explicit timestamps to ordinary
-methods without replacing the whole OS time API.
+Use ordinary `std::time`; no mandatory timer thread, periodic tick-message
+producer or custom clock HAL is needed. Measurement timestamps remain explicit
+HAL data, not inferred from when `recv()` returns.
 
-## Device readiness and messages: one I/O wait, not two
+### Alternative: selecting separate typed channels
 
-A standard channel receive does not wait on arbitrary device descriptors, and
-Crossbeam selection selects channel operations rather than device I/O. For an
-owner with pollable I/O, keep typed message storage but attach a persistent wake
-source to the same I/O wait set as its device readiness. [Receiver API][std-receiver],
+One wait point does not require one physical queue. Existing APIs or separate
+capacity/lifetime requirements may justify `crossbeam-channel::select!`/`Select`
+over typed HAL, command and peer receivers. Reuse this existing mechanism rather
+than implement a selector. It selects channel operations, not raw device I/O.
 [Crossbeam selection][crossbeam-select]
 
-The producer enqueues the typed message, then notifies that wake source. The
-owner processes bounded inbox batches with `try_recv()`, processes ready devices
-and due deadlines, then blocks only in the I/O wait operation. It must never
-block in `recv()` after the I/O poller wakes: doing so could stall device work.
+These must be Crossbeam receivers, not std receivers. Keep one consumer per
+service even though Crossbeam permits receiver cloning. Normal selection is
+random among ready operations, not a hard fairness/priority guarantee. Closed
+channels are ready too: stop or disable an optional closed source rather than
+repeatedly ignoring errors. This is an alternative, not a reason to introduce
+separate queues or change every service. No Rust async `.await` is required.
+[Crossbeam selection][crossbeam-select]
 
-`polling::Poller` supplies `wait()` and `notify()`; notification wakes the current
-or following wait. Mio supplies `Poll` and `Waker`. Reuse a supported backend
-rather than designing a general reactor. These are candidates, not claims that
-either library is already qualified on nxrs's NuttX/browser profiles.
-[Poller][poller], [Mio Waker][mio-waker]
+## Provider-internal I/O waits and cancellation
 
-The small adapter still needs a precise, tested protocol:
+The earlier proposal to combine device descriptors and the inbox in the
+**service** loop is superseded. Any such mixed I/O wait belongs inside HAL
+provider/target support, for example combining a GNSS UART and cancellation or
+receiver-configuration requests. The portable service consumes normalized events.
 
-- Queue contents are authoritative; notifications may coalesce. Do not assume
-  one wake equals one message, or that an empty wake is an error.
-- After a bounded batch, never sleep indefinitely while queued or locally ready
-  work remains. Retain pending-work state and use a nonblocking wait iteration
-  to reconsider other sources when necessary.
-- Wake notification must cover the empty-check-to-sleep race, including the
-  sender notifying before the owner enters its wait.
-- Edge-triggered I/O must remain runnable until drained to `WouldBlock`; a batch
-  limit alone is not permission to await another edge. One-shot modes require
-  rearming according to their API. [Mio readiness][mio-poll], [Poller][poller]
-- An enqueue followed by wake failure is not a rejected message. Do not return
-  the event as unsent or encourage retry/duplication. Surface an admitted-but-
-  wake-failed/backend-failed outcome and define recovery before implementation.
-- Close/shutdown must wake an idle owner too. Dropping the last ordinary channel
-  sender does not independently notify an unrelated I/O poller; the adapter
-  needs an explicit close notification or equivalent integrated lifecycle.
+A provider may reuse a supported poller or a narrow native adapter. `polling`
+supplies `wait`/`notify`; Mio supplies `Poll`/`Waker`. Neither is assumed qualified
+for nxrs's NuttX/browser profiles. POSIX MQ may still suit a real C/process
+boundary or measured provider requirement, but is not needed to serialize
+Rust-only service events. [Poller][poller], [Mio Waker][mio-waker]
 
-For NuttX, a narrow native readiness adapter may be appropriate after checking
-its selected configuration and HAL support. Device descriptors and their
-registration/lifetime belong behind that adapter; portable services should not
-select concrete device paths. No queue, wakeup or try-send operation is assumed
-ISR-safe merely because it does not wait for queue capacity.
+Provider internals must address coalesced notifications, wake-before-wait races,
+edge/one-shot rearming, cancellation, and close wakeups. After a bounded batch,
+retain runnable state until an edge-triggered source is drained to `WouldBlock`;
+do not sleep indefinitely awaiting another edge while work remains.
+[Mio readiness][mio-poll]
 
-## Why POSIX MQ is no longer the default
+A notification failure after admission is not a rejected message safe to resend.
+Define backend failure/recovery separately. These concerns stay behind HAL;
+the service does not implement an OS-specific queue-to-descriptor bridge.
 
-Active ownership is compatible with POSIX MQ, but it does not require it. For
-this Rust-only, in-process model, prefer typed Rust queues plus an I/O wake source
-when needed. Do not encode every enum into bytes merely to obtain a pollable
-notification.
+## Normalized measurements, bulk data and overload
 
-Retain POSIX MQ only for a justified external/C/process interface or a measured
-platform-specific requirement. That boundary then needs an explicit validated
-representation and its own lifetime rules. Native `poll()` remains useful for
-readiness regardless of whether POSIX MQ is used for message storage.
+A small normalized GNSS result is useful hardware input even when periodic.
+Sending it once from HAL to its owning service is within this design. Do not
+then forward it through separate preprocessing, fusion and health actors: those
+can be ordinary calls inside the same service. Message rate alone is not the
+criterion; meaningful ownership and work performed at the boundary are.
 
-## Bounded bulk data and memory
+Raw byte chunks, per-character notifications and redundant per-sentence events
+should not leak into the service. Define which complete measurements/status
+changes are relevant and deliver those. Keep buffering and normalization bounded
+inside HAL; do not conceal unbounded buffering behind a small event type.
 
-High-rate or large data remains outside the generic command/event channel.
-Within one owner, use borrows. Across a justified execution boundary, transfer
-preallocated owning buffers on a specialized bounded data path, or reuse a
-bounded SPSC ring such as `rtrb` when its constraints fit. Shared storage does
-not mean unrestricted shared mutation. [SPSC ring][rtrb]
+For genuinely high-rate or large payloads, use a specialized bounded buffer/ring
+path and a HAL event in the same service inbox indicating available work. A
+bounded `drain`/`take_ready` API may access already-normalized data; it must not
+block awaiting hardware, expose raw descriptors or ask the service to parse.
+Notification coalescing must not lose work: preserve pending data, re-notify or
+continue bounded local dispatch before sleeping again. The exact protocol needs
+tests; a boolean flag without race/lifecycle handling is insufficient.
 
-Rust ownership should do the default lifetime work: moving an owning buffer
-handle avoids a deep payload copy. A fixed set of `Box<[u8]>` buffers can be
-allocated at startup and recycled. Use immutable `Arc` sharing only when multiple
-consumers genuinely need overlapping ownership; it is not automatic mutation
-safety or a complete pool-reuse protocol. DMA alignment, cache maintenance,
-completion and device access need a provider-specific contract.
-[Box][box], [Arc][arc]
+Within one processing owner, borrow data. Across a justified boundary, transfer
+preallocated owning buffers or reuse a bounded SPSC ring such as `rtrb`.
+Moving an owning buffer handle avoids a deep payload copy. A fixed set of
+`Box<[u8]>` buffers can be allocated once and recycled. Use immutable `Arc` only
+for genuinely overlapping readers. DMA alignment, cache maintenance and device
+completion remain provider responsibilities. [SPSC ring][rtrb], [Box][box], [Arc][arc]
 
-Use an existing bounded collection when helpful rather than a new nxrs container.
-`Vec::with_capacity` reserves capacity; it is not a hard length limit. Enforce a
-limit or use arrays/boxed slices/`ArrayVec`. Initialization may allocate while
-steady state follows an explicit allocation budget, verified on the actual
-build including overload and error paths. [Vec][vec], [ArrayVec][arrayvec]
+`Vec::with_capacity` is a reservation, not a hard limit. Enforce limits or use
+arrays, boxed slices or `ArrayVec`. Verify allocation budgets including error
+paths; neither a bounded queue nor a small handle bounds all reachable memory.
+[Vec][vec], [ArrayVec][arrayvec]
 
-No per-frame control event is required when a device/ring readiness source can
-wake the consumer. Pool exhaustion, held-buffer limits and shutdown reclamation
-must remain explicit even when the associated control inbox is empty.
+A common inbox shares capacity across HAL and peer producers. A fix flood must
+not silently remove command/shutdown progress. Specify source rate/burst limits,
+capacity and full policies. Do not indefinitely block an acquisition worker on
+service progress and thereby prevent device draining or cancellation.
 
-## Lifecycle, overload and determinism
+A latest-value display might permit replacing stale solutions; an estimator may
+need chronological measurements and visible gap/overrun reporting instead.
+Coalescing/dropping is a capability-and-consumer contract, never an automatic
+framework policy. Report overflow independently of successfully enqueueing one
+more event into the same full queue, for example with sticky status/counters
+that become observable when the service resumes. No delivery guarantee is
+claimed before this protocol and its tests exist.
 
-The common contract should distinguish startup attempted from service ready,
-message admission from completion, and service failure from channel closure.
-A thread being spawned does not by itself establish readiness. Keep acknowledgments
-explicit and sparse; do not build a general RPC system or allocate a reply channel
-for every routine event.
+## Lifecycle, source failure and determinism
 
-Normal handlers should not block on another owner, wait for queue capacity, or
-join a peer. `try_send` full/disconnected outcomes need message-specific policies.
-Important events are not automatically safe to discard. Persistent saturation
-should trigger investigation; bounded storage does not guarantee delivery.
+Distinguish startup from readiness, admission from completion, and source failure
+from whole-inbox closure. One failed HAL producer may disappear while command
+senders remain alive: that does not disconnect the common receiver. Provide an
+explicit source-lifecycle outcome/status mechanism rather than infer hardware
+health from `recv()` disconnection. Terminal-event admission must have a policy.
 
-Define stop admission and shutdown progress even when the queue is full. Options
-still under discussion include quiescing producers before a queued stop marker,
-or a separate persistent stop request integrated into the same wait. A queued
-stop drains only work preceding it under the chosen protocol; it does not
-magically close cloned senders or acknowledge racing posts. A stop flag alone
-cannot wake a sleeping owner. No policy here permits an additional blocking wait.
+Normal dispatch must not synchronously await another service, wait for queue
+space, or join a peer/HAL worker. Hardware configuration that completes later
+can produce a completion event at this same service inbox. A synchronous,
+bounded local operation does not require an artificial asynchronous protocol.
 
-The composition owner explicitly shuts down and joins tasks, handling failures
-and outstanding buffers. Do not hide a potentially blocking join in `Drop`.
-Dropping `JoinHandle` detaches the thread. A panic is not necessarily recoverable
-on an aborting embedded build; ordinary recoverable failures use `Result`.
-[Thread completion][thread-join]
+A service owns its HAL session lifecycle. Startup creates/registers sinks before
+enabling production and rolls back partial starts. Shutdown requests provider
+stop, wakes any provider blocked on hardware, resolves queued/in-flight data and
+quiesces callbacks before releasing their resources. Requesting stop and joining
+must not create a cycle where the provider needs the service to drain a full
+inbox before it can finish. Exact drain/discard and acknowledgment rules remain
+open; finite queues alone do not provide shutdown guarantees.
 
-Check deadlines and bound device/command batches. Ordered private mutation does
-not establish global producer order, hard real-time scheduling, lock freedom,
-priority inheritance, or memory-fault isolation. Measure handler latency,
-starvation, CPU, stacks, queue/pool high-water marks and steady-state allocation
-before making performance claims.
+Stop must progress even at capacity. Options include quiescing producers before
+a queued stop marker or a persistent stop request integrated with the same wait.
+A flag alone cannot wake a blocked service. A service holding HAL handles whose
+workers hold sender clones cannot rely on automatic channel closure for shutdown.
 
-## Small reusable crate: contracts and integration
+The lifecycle owner explicitly joins tasks after the needed progress is ensured.
+Do not hide blocking joins in `Drop`; dropping `JoinHandle` detaches its thread.
+An aborting embedded build does not make panics recoverable. Ordinary recoverable
+errors use `Result`. [Thread completion][thread-join]
 
-Tentative name: `nxrs-ao`; placement and name remain open. Build on the existing
-[std-backed transport](../service/event/src/lib.rs), not another queue algorithm.
-The useful shared pieces are typed endpoint/inbox ownership, a unique task handle,
-explicit lifecycle outcomes, and narrowly tested wake/dispatch integration.
+One owner serializes private mutations, not the measurement times of racing
+sources. Preserve explicit timestamps/sequence information. Neither this model
+nor `try_send` guarantees hard real-time scheduling, lock freedom, priority
+inheritance or ISR safety. Measure provider/service latency, starvation, CPU,
+stacks, queue/pool occupancy and allocation on the actual target.
 
-Reuse `std` first. Add Crossbeam only for operations actually needed; choose
-`polling`/Mio or a native adapter only after target validation. Fixed-capacity
-collections, specialized rings and tools such as Loom are available where the
-requirement warrants them. Loom only explores synchronization modeled through
-its types; it does not qualify arbitrary OS readiness calls. [Loom][loom]
+## Small reusable crate and existing implementation
 
-Keep this crate independent of navigation, HAL provider selection and application
-composition. Do not add a global enum/bus, service registry, generic actor runtime,
-mandatory executor, universal service trait, serializer, scheduler, buffer-ID
-protocol or subscription graph. A few private structs and helpers may be enough.
+Tentative name: `nxrs-ao`; placement and name remain open. Reuse the current
+[std-backed transport](../service/event/src/lib.rs) and standard threads rather
+than write a queue algorithm or scheduler. The shared value is narrow typed
+endpoints, one inbox, lifecycle outcomes and consistently tested dispatch.
 
-## Existing demo and validation boundaries
+Keep neutral messaging support independent of service implementations and HAL
+provider selection. HAL event/data contracts do not require a global event enum.
+No generic actor runtime, serializer, service graph, mandatory async executor or
+service-side device wait-set API is required by this design. Provider-internal
+waiting belongs to HAL/target support.
 
-The [event demo](event-driven-demo.md) currently puts IMU, GNSS and fusion in
-separate owners and sends samples through channels. Retain its execution,
-portability and lifecycle evidence, but do not treat that topology as the target
-product decomposition. The [architecture overview](architecture.md) distinguishes
-that current implementation from this discussion.
+The current [GNSS API](../hal/gnss/api/src/lib.rs) is synchronous
+(`Gnss::fix`) and already hides receiver protocols; it does not implement the
+proposed event-producing HAL session. This document specifies a direction for
+future work, not an existing capability. The [event demo](event-driven-demo.md)
+remains useful std/thread/channel and lifecycle evidence, not a requirement to
+retain its separate sensor-service-to-fusion message topology. See the
+[architecture overview](architecture.md) for the distinction from current code.
 
-This documentation change does not refactor those services or select new target
-backends. The Rust sketches explain the proposed contract; they do not establish
-allocation freedom, deadlines, NuttX/browser support or production shutdown.
+Use established bounded collections/rings where needed. Loom can help with small
+custom synchronization protocols expressed through its model types; it does not
+qualify arbitrary OS readiness or DMA operations. [Loom][loom]
 
-Before adopting helpers, qualify multi-producer fan-in, full/disconnected payload
-recovery, source closure, deadline progress under sustained events, shutdown at
-capacity, and mixed-I/O wake/close races. Compare with raw std primitives on the
-same target. Avoid benchmarking an unnecessary message graph and calling that an
-architecture improvement.
+Before implementation, qualify same-inbox HAL/peer/command delivery, rejected
+payload recovery, device-independent normalization, source termination while
+other producers remain alive, deadlines under sustained data, overflow visibility,
+partial startup rollback, full-inbox shutdown, blocked-read cancellation and
+post-stop callback quiescence. Test normalization using synthetic protocol input
+and test service behavior using already-normalized values; hardware is not needed
+for those layers. Hardware and selected-target execution still require their own
+qualification. No runtime or performance guarantees follow from these sketches.
 
 ## Remaining discussion
 
-1. **API surface and reuse:** are narrow closures sufficient for event sinks, or
-   does repeated code justify a small typed sender adapter/task helper? No
-   mandatory `ActiveObject` trait is presumed.
-2. **Capacity and stop policy:** when is common-inbox capacity enough, and when
-   are separate queues or reserved admission needed? How is shutdown progress
-   ensured without blocking another owner or pretending queued means completed?
-3. **Readiness adapter:** choose the minimal NuttX/native/browser integration,
-   ownership of registrations, and treatment of notification/close failures.
-4. **Scheduling and fairness:** define deadline-overrun and source-batch policies;
-   keep target-specific priorities separate from portable stack/name settings.
-5. **Bulk ownership and examples:** reuse path-specific pools until common needs
-   justify sharing; decide whether to add a coarse-owner example alongside the
-   existing qualification demo rather than replacing its evidence.
+1. **HAL session API and support placement:** sink closures versus a narrow typed
+   endpoint, neutral support dependencies and how the service owns start/stop.
+2. **GNSS data contract:** coherent epochs, optional fields, validity, timestamp
+   domains and observable source lifecycle without protocol leakage.
+3. **Capacity and shutdown:** admission/reservations or separate queues, overload
+   policy, terminal-event handling and cancellation without wait-for cycles.
+4. **Provider execution:** dedicated/shared worker or callbacks, selected-target
+   cancellation support, scheduling, stack budgets and ISR deferred paths.
+5. **Bulk delivery and fairness:** bounded drains and loss-free notification,
+   pool reuse, deadline policy and a coarse-owner example alongside existing tests.
 
-The default direction is now typed Rust fan-in, not an unresolved choice between
-POSIX MQ and Rust messaging. The broader wait/dispatch and lifecycle API remains
-open for review.
+The boundary is settled for this proposal: **HAL waits on and interprets devices;
+services wait once for normalized HAL events, peer events and commands.** The
+helper APIs and qualification details remain open for review.
 
 ## API references
 
-These references describe primitives, not qualification of a specific nxrs target
-or dependency version. Use pinned toolchains/dependencies for implementation.
+These describe primitives, not qualification of a specific nxrs build. Pin
+actual toolchains/dependencies when implementing the design.
 
 [std-channel]: https://doc.rust-lang.org/std/sync/mpsc/fn.sync_channel.html
 [std-sender]: https://doc.rust-lang.org/std/sync/mpsc/struct.SyncSender.html
