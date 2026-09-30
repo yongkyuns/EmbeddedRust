@@ -297,10 +297,10 @@ export CARGO_PROFILE_RELEASE_STRIP=none
 export CARGO_PROFILE_RELEASE_DEBUG=1
 export NUTTX_STD_LINK_LOG="$OUT/rust-link.json"
 export RUSTFLAGS="-C panic=abort -C linker=$ROOT/tests/nuttx-std/link.py"
-if [[ "${NXRS_NUTTX_DIAGNOSTIC_FRAME_POINTERS:-0}" == 1 ]]; then
-  # NuttX's frame-pointer unwinder otherwise stops at malloc's Rust caller.
-  # Keep this opt-in: extra frames change the ordinary firmware image.
-  export RUSTFLAGS="$RUSTFLAGS -C force-frame-pointers=yes"
+if [[ "${NXRS_NUTTX_DIAGNOSTIC_UNWIND:-0}" == 1 ]]; then
+  # The MPS2 ARM EHABI backtracer needs unwind entries in Rust code too.
+  # Keep this opt-in: extra tables change the ordinary firmware image.
+  export RUSTFLAGS="$RUSTFLAGS -C force-unwind-tables=yes"
 fi
 
 "$CARGO_BIN" build --locked --release \

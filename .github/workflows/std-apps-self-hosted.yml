@@ -242,7 +242,7 @@ jobs:
           for platform in mps2-an521-mock pico2-mock; do
             mkdir -p "target/firmware/$APP/$platform"
             if test "$platform" = mps2-an521-mock; then
-              NXRS_NUTTX_DIAGNOSTIC_FRAME_POINTERS=1 cargo +1.90.0 firmware --app "$APP" --platform "$platform" 2>&1 | tee "target/firmware/$APP/$platform/build.log"
+              NXRS_NUTTX_DIAGNOSTIC_UNWIND=1 cargo +1.90.0 firmware --app "$APP" --platform "$platform" 2>&1 | tee "target/firmware/$APP/$platform/build.log"
             else
               cargo +1.90.0 firmware --app "$APP" --platform "$platform" 2>&1 | tee "target/firmware/$APP/$platform/build.log"
             fi
