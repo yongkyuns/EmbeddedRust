@@ -22,6 +22,7 @@ board: "SoC / board\nBus + hardware" {
   width: 168
   height: 82
 }
-client -> upper: "open / read / poll\n+ class ioctl" { style.font-size: 16 }
-upper -> lower: "driver ops" { style.font-size: 16 }
-lower -> board: "I2C / SPI" { style.font-size: 16 }
+# Device access: open/read/poll + class ioctl; then driver and bus operations.
+client -> upper
+upper -> lower
+lower -> board
