@@ -99,6 +99,12 @@ URL="https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/acti
 sudo apt-get update
 sudo apt-get install -y --no-install-recommends ca-certificates curl git
 
+export PATH="$HOME/.cargo/bin:$PATH"
+if ! command -v rustup >/dev/null 2>&1; then
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
+    sh -s -- -y --profile minimal --default-toolchain none
+fi
+
 mkdir -p "$RUNNER_DIR"
 cd "$RUNNER_DIR"
 
