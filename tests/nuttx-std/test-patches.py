@@ -58,6 +58,8 @@ class PatchSeriesTests(unittest.TestCase):
         self.assertIn("config TLS_GLOBAL_KEYS", (self.source / "libs/libc/tls/Kconfig").read_text())
         self.assertIn("config TLS_DTOR_ITERATIONS", (self.source / "libs/libc/tls/Kconfig").read_text())
         self.assertIn("tls->tl_elem[candidate] = 0;", (self.source / "libs/libc/tls/tls_destruct.c").read_text())
+        self.assertIn("g_keyused[candidate] = true", (self.source / "libs/libc/pthread/pthread_keycreate.c").read_text())
+        self.assertIn("g_keydtors[candidate] = destructor", (self.source / "libs/libc/pthread/pthread_keycreate.c").read_text())
 
     def test_rejects_reapplication_without_mutation(self):
         self.assertEqual(self.apply().returncode, 0)
