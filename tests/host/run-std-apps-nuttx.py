@@ -101,11 +101,11 @@ def run(qemu: Path, image: Path, app: str, log: Path) -> None:
         try:
             heap_results = validate_heap_cycles(app, baseline_heap, warm_heap, checked_heap)
         except AssertionError:
-            # Allocation ownership diagnostics: CONFIG_MM_BACKTRACE=0 tags
-            # each heap node with its allocating PID without collecting a
-            # call stack. NuttX's "leak" selector prints nodes whose owner PID
-            # is no longer alive. Keep this on failure only so passing runs do
-            # not add diagnostic console traffic.
+            # MPS2 records owner PIDs and ARM EHABI allocation stacks. The
+            # diagnostic Rust build emits unwind tables so these traces reach
+            # Rust callers. NuttX's "leak" selector prints nodes whose owner
+            # PID is no longer alive; keep it failure-only to avoid adding
+            # console traffic to passing runs.
             command("echo leak > /proc/memdump")
             command("echo biggest > /proc/memdump")
             raise

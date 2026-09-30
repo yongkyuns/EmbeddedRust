@@ -89,6 +89,31 @@ reads occur while owners are intentionally paused after their measured work.
 None of these diagnostic observations is used as a throughput or latency
 benchmark.
 
+## Current repeated-launch failure
+
+The [exact-head MPS2 run](https://github.com/yongkyuns/EmbeddedRust/actions/runs/36666402422)
+passes host tests but fails the strict heap gate for both apps. After warm-up,
+`std-demo` rises from 15,160 to 16,656 used bytes on the first checked launch;
+`ao-stress` rises from 19,104 to 28,384 bytes. Further launches keep growing.
+The assertions remain exact and have not been relaxed.
+
+The failed-run `/proc/memdump` traces identify retained allocations in
+`std::thread::Builder::spawn_unchecked_` (`Arc` thread handles) and Rust
+thread-local initialization. In this flat NuttX image, Rust `std` caches a
+`pthread_key_t` in an image-wide `LazyKey`; NuttX stores key destructors in
+each task group's `task_info_s`. A later NSH launch makes a fresh task group
+without recreating the cached key, so the Rust thread-cleanup destructor is
+absent. That leaves a worker's current-thread handle and other TLS allocations
+retained after join. The MPS2 diagnostic image enables NuttX backtraces and
+Rust unwind tables to make these allocation sites visible; ordinary Pico 2
+build flags are unchanged.
+
+The product model of one Rust `main()` per MCU boot does not exercise this
+relaunch mismatch. This repeated-launch qualification must stay failing and
+the PR draft until the runtime/task-group TLS lifetime is resolved and the
+same exact heap gate passes. A larger leak allowance or one-boot substitute
+would test a different contract.
+
 Primary pinned NuttX implementation references:
 
 - `fs/procfs/fs_procfsmeminfo.c` at the nxrs-pinned NuttX commit;
