@@ -1,6 +1,6 @@
 # OpenVela, POSIX, and nxrs: where portability actually lives
 
-**Reference note · reviewed 2026-09-30 · non-normative.** This is a targeted source review, not a complete dependency audit or a performance comparison. Nxrs is sampled at `820536962f5bea9d71f4f9960ae0f42d33184b30`; OpenVela Bluetooth at `c423c51e69acad244b1d44f138918cbedbc70d40`. The [HAL capability architecture](../hal-platform-architecture.md) remains authoritative for nxrs.
+**Reference note · reviewed 2026-09-30 · non-normative.** This is a targeted source review, not a complete dependency audit or a performance comparison. Nxrs is sampled at `820536962f5bea9d71f4f9960ae0f42d33184b30`; OpenVela Bluetooth at `c423c51e69acad244b1d44f138918cbedbc70d40`. The [HAL capability architecture](../../hal-platform-architecture.md) remains authoritative for nxrs.
 
 ## Conclusion
 
@@ -23,9 +23,9 @@ A particularly useful counterexample: Bluetooth's `Makefile.host` builds a host-
 
 ## How OpenVela hides hardware
 
-![Representative OpenVela and NuttX device abstraction path](../diagrams/openvela-abstractions.svg)
+![Representative OpenVela and NuttX device abstraction path](diagrams/openvela-abstractions.svg)
 
-*Representative class-driver path, not a requirement that every application uses a framework or every driver has exactly two halves. [D2 source](../diagrams/openvela-abstractions.d2).*
+*Representative class-driver path, not a requirement that every application uses a framework or every driver has exactly two halves. [D2 source](diagrams/openvela-abstractions.d2).*
 
 For NuttX's sensor class, the **upper half** owns common device behavior such as file operations, buffering, and multi-client handling. The **lower half** supplies device operations and hardware interaction. The board/SoC layer supplies controller support and board setup. The OpenVela LED tutorial explicitly separates board registration, STM32 peripheral support, and generic drivers. [2][nuttx-sensors] [1][vela-led]
 
@@ -35,9 +35,9 @@ OpenVela also abstracts **above** file descriptors. Its Bluetooth repository sep
 
 ## What nxrs adds—and what it does not
 
-![Nxrs capability boundary with alternative camera providers](../diagrams/nxrs-capability-boundary.svg)
+![Nxrs capability boundary with alternative camera providers](diagrams/nxrs-capability-boundary.svg)
 
-*Conceptual use path. Dashed branches are alternative build selections, not a runtime registry. The facade and API are separate crates; providers depend on `api/`, not vice versa. [D2 source](../diagrams/nxrs-capability-boundary.d2).*
+*Conceptual use path. Dashed branches are alternative build selections, not a runtime registry. The facade and API are separate crates; providers depend on `api/`, not vice versa. [D2 source](diagrams/nxrs-capability-boundary.d2).*
 
 Nxrs applications/services use capability facades such as `nxrs-imu` and `nxrs-camera`. Each capability's `api/` crate defines provider-independent types and operations; the facade selects an optional provider through Cargo features. Product-platform metadata owns the provider/board/OS selection. There is no global HAL platform object. [6][nxrs-architecture]
 
@@ -60,7 +60,7 @@ Execution is separate from device abstraction: nxrs's std-based service/thread p
 
 Keep using NuttX's existing hardware abstractions inside providers rather than recreating a driver stack. Keep target headers, foreign-function interfaces, device paths, and request constants below the capability facade. Define portable semantics where product behavior depends on them—units, timestamps, readiness, ownership, and errors—rather than wrapping every standard-library call. Test the same behavior against each claimed provider/target combination. **Hardware abstraction, OS abstraction, and application portability are different promises.**
 
-The diagrams use D2 with a **custom Material-style palette**, not a nonexistent built-in Material preset. See [rendering instructions](../diagrams/README.md).
+The diagrams use D2 with a **custom Material-style palette**, not a nonexistent built-in Material preset. See [rendering instructions](diagrams/README.md).
 
 ## Primary sources
 

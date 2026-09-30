@@ -17,9 +17,9 @@ Install [D2 v0.9.0](https://github.com/d2lang/d2/releases/tag/v0.9.0), then run 
 
 ```sh
 d2 --version
-bash docs/diagrams/render.sh
+bash docs/references/openvela/diagrams/render.sh
 ```
 
 Alternatively, set `D2=/absolute/path/to/d2`. The script uses the ELK layout engine and emits both SVGs alongside their sources. Regenerate the SVGs whenever a diagram or the shared palette changes. Using another D2 version may change layout or serialization.
 
-The SVGs were compiled with D2 v0.9.0, parsed as XML, and visually inspected in Chromium. The diagrams illustrate the boundaries discussed in the [reference note](../references/openvela-abstractions.md); they do not claim all provider/target combinations are implemented or tested.
+The SVGs were compiled with D2 v0.9.0, parsed as XML, and visually inspected in Chromium. The diagrams illustrate the boundaries discussed in the [reference note](../README.md); they do not claim all provider/target combinations are implemented or tested.
