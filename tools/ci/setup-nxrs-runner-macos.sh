@@ -97,7 +97,7 @@ ARCHIVE="/tmp/actions-runner-${RUNNER_VERSION}.tar.gz"
 URL="https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-${RUNNER_ARCH}-${RUNNER_VERSION}.tar.gz"
 
 sudo apt-get update
-sudo apt-get install -y --no-install-recommends ca-certificates curl git
+sudo apt-get install -y --no-install-recommends build-essential ca-certificates curl git
 
 export PATH="$HOME/.cargo/bin:$PATH"
 if ! command -v rustup >/dev/null 2>&1; then
