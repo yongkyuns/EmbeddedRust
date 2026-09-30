@@ -28,7 +28,9 @@ implemented by this documentation update.
 The current production direction is capability-first:
 
 ```text
-nxrs-applications -> nxrs-services
+nxrs-applications -> nxrs-camera-service
+                     nxrs-recording-service
+                     nxrs-telemetry-service
                      -> nxrs-camera / nxrs-storage / nxrs-transport
                           -> provider-independent api contract
                           -> one build-selected provider

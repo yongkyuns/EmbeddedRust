@@ -1,0 +1,7 @@
+[package]
+name = "nxrs-camera-service"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+nxrs-camera-api = { path = "../../hal/camera/api" }

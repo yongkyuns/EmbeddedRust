@@ -7,7 +7,7 @@ use nxrs_camera_nuttx::DeviceCamera;
 use nxrs_storage_nuttx::FileStorage;
 use nxrs_camera_api::{Camera, DeviceError, Format, PixelFormat};
 use nxrs_transport_api::Transport;
-use nxrs_services::{CameraState, CaptureProgress};
+use nxrs_camera_service::{CameraState, CaptureProgress};
 
 extern "C" {
     fn rc_sim_note(phase: u32);

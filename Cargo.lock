@@ -19,9 +19,11 @@ name = "nxrs-applications"
 version = "0.1.0"
 dependencies = [
  "nxrs-camera",
+ "nxrs-camera-service",
+ "nxrs-recording-service",
  "nxrs-service-event",
- "nxrs-services",
  "nxrs-storage",
+ "nxrs-telemetry-service",
  "nxrs-transport",
 ]
 
@@ -66,6 +68,13 @@ version = "0.1.0"
 dependencies = [
  "nxrs-camera-api",
  "nxrs-nuttx-support",
+]
+
+[[package]]
+name = "nxrs-camera-service"
+version = "0.1.0"
+dependencies = [
+ "nxrs-camera-api",
 ]
 
 [[package]]
@@ -141,7 +150,8 @@ dependencies = [
  "nxrs-applications",
  "nxrs-camera-api",
  "nxrs-camera-native",
- "nxrs-services",
+ "nxrs-camera-service",
+ "nxrs-recording-service",
  "nxrs-storage-api",
  "nxrs-storage-native",
  "nxrs-transport-api",
@@ -164,8 +174,9 @@ dependencies = [
  "nxrs-applications",
  "nxrs-camera-api",
  "nxrs-camera-nuttx",
+ "nxrs-camera-service",
  "nxrs-nuttx-support",
- "nxrs-services",
+ "nxrs-recording-service",
  "nxrs-storage-api",
  "nxrs-storage-nuttx",
  "nxrs-transport-api",
@@ -180,8 +191,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "nxrs-service-event"
+name = "nxrs-recording-service"
 version = "0.1.0"
+dependencies = [
+ "nxrs-storage-api",
+]
 
 [[package]]
 name = "nxrs-rt-bench"
@@ -191,13 +205,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "nxrs-services"
+name = "nxrs-service-event"
 version = "0.1.0"
-dependencies = [
- "nxrs-camera-api",
- "nxrs-storage-api",
- "nxrs-transport-api",
-]
 
 [[package]]
 name = "nxrs-simulator"
@@ -206,8 +215,10 @@ dependencies = [
  "nxrs-applications",
  "nxrs-camera-api",
  "nxrs-camera-mock",
- "nxrs-services",
+ "nxrs-camera-service",
+ "nxrs-recording-service",
  "nxrs-storage-mock",
+ "nxrs-telemetry-service",
  "nxrs-transport-mock",
 ]
 
@@ -267,6 +278,14 @@ version = "0.1.0"
 dependencies = [
  "nxrs-nuttx-support",
  "nxrs-storage-api",
+]
+
+[[package]]
+name = "nxrs-telemetry-service"
+version = "0.1.0"
+dependencies = [
+ "nxrs-camera-api",
+ "nxrs-transport-api",
 ]
 
 [[package]]

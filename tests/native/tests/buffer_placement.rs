@@ -8,7 +8,7 @@ use nxrs_camera_native::ReplayCamera;
 use nxrs_storage_native::{read_record, FileRecorder, StorageLimits};
 use nxrs_transport_native::UdpTransport;
 use nxrs_camera_api::{Camera, Capture, DeviceError, Format, PixelFormat};
-use nxrs_services::{CameraService, Error, Frames};
+use nxrs_camera_service::{CameraService, Error, Frames};
 
 fn frame_buffer(bytes: usize) -> std::io::Result<Box<[u8]>> {
     let mut buffer = Vec::new();

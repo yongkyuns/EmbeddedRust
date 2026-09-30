@@ -1,6 +1,6 @@
 //! Packet-producing behavior needs no socket or mock HAL crate.
 use nxrs_camera_api::{Capture, Format, Frame, PixelFormat};
-use nxrs_services::{Error, SinkStats, Telemetry, TelemetryService};
+use nxrs_telemetry_service::{Error, Telemetry, TelemetryService, TelemetryStats};
 use nxrs_transport_api::{DeviceError, PacketSink, Transport};
 
 fn frame() -> Frame<'static> {
@@ -35,7 +35,7 @@ fn telemetry_can_publish_to_a_stack_only_callback() {
         };
         let mut service = TelemetryService::new(sink);
         assert_eq!(service.publish(frame()), Ok(()));
-        assert_eq!(service.stats(), SinkStats { accepted: 1, errors: 0 });
+        assert_eq!(service.stats(), TelemetryStats { accepted: 1, errors: 0 });
     }
     assert_eq!(calls, 1);
     assert_eq!(observed, EXPECTED);
@@ -52,10 +52,10 @@ fn rejection_is_reported_without_retrying_or_counting_acceptance() {
         };
         let mut service = TelemetryService::new(sink);
         assert_eq!(service.publish(frame()), Err(Error::Device(DeviceError::Busy)));
-        assert_eq!(service.stats(), SinkStats { accepted: 0, errors: 1 });
+        assert_eq!(service.stats(), TelemetryStats { accepted: 0, errors: 1 });
         // Only the caller, not an output framework, requests a retry.
         assert_eq!(service.publish(frame()), Ok(()));
-        assert_eq!(service.stats(), SinkStats { accepted: 1, errors: 1 });
+        assert_eq!(service.stats(), TelemetryStats { accepted: 1, errors: 1 });
     }
     assert_eq!(calls, 2);
 }

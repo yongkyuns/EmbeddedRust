@@ -1,5 +1,24 @@
-use nxrs_camera_api::{Camera, Capture, Format, Frame};
-use crate::Error;
+//! Camera capture and frame history service.
+#![no_std]
+#![forbid(unsafe_code)]
+
+use nxrs_camera_api::{Camera, Capture, DeviceError, Format, Frame};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Error {
+    Device(DeviceError),
+    InvalidCapacity,
+    InvalidFormat,
+    InvalidFrame,
+    ClockWentBackwards,
+    AlreadyRunning,
+    NotRunning,
+    SequenceExhausted,
+}
+
+impl From<DeviceError> for Error {
+    fn from(value: DeviceError) -> Self { Self::Device(value) }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CameraState { Stopped, Running, StopPending }

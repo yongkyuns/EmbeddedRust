@@ -3,12 +3,14 @@
 #![forbid(unsafe_code)]
 
 mod reader;
+mod error;
 pub mod recorder;
 pub mod monitor;
 pub mod product;
 
 pub use recorder::Recorder;
 pub use monitor::Monitor;
+pub use error::Error;
 pub use product::{CameraProduct, ConsumerReport, ShutdownReport, TickReport};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

@@ -14,7 +14,8 @@ SPEC = importlib.util.spec_from_file_location('camera_isolation', ROOT / 'tools/
 EVIDENCE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(EVIDENCE)
 BASE = {'nxrs-hal-common', 'nxrs-transport-api'}
-APP = BASE | {'nxrs-applications', 'nxrs-services', 'nxrs-service-event',
+APP = BASE | {'nxrs-applications', 'nxrs-camera-service', 'nxrs-recording-service',
+              'nxrs-telemetry-service', 'nxrs-service-event',
               'nxrs-camera', 'nxrs-camera-api', 'nxrs-storage',
               'nxrs-storage-api', 'nxrs-transport', 'nxrs-camera-native',
               'nxrs-storage-native', 'nxrs-transport-native'}

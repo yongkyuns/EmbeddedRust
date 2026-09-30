@@ -1,0 +1,7 @@
+[package]
+name = "nxrs-recording-service"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+nxrs-storage-api = { path = "../../hal/storage/api" }

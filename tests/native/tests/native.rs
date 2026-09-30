@@ -12,7 +12,8 @@ use nxrs_transport_native::UdpTransport;
 use nxrs_camera_api::{Camera, Capture, DeviceError, Format, Frame, PixelFormat};
 use nxrs_storage_api::Storage;
 use nxrs_transport_api::Transport;
-use nxrs_services::Error;
+use nxrs_applications::Error;
+use nxrs_recording_service::Error as RecordingError;
 
 const FORMAT: Format = Format { width: 2, height: 2, pixels: PixelFormat::Gray8 };
 static NEXT: AtomicU64 = AtomicU64::new(0);
@@ -206,7 +207,7 @@ fn unchanged_applications_compose_real_replay_disk_and_udp_adapters() {
     let deadline = Instant::now() + Duration::from_secs(10);
     loop {
         match product.recorder.stop(&mut product.recordings) {
-            Err(Error::Device(DeviceError::Busy)) if Instant::now() < deadline => thread::yield_now(),
+            Err(Error::Recording(RecordingError::Device(DeviceError::Busy))) if Instant::now() < deadline => thread::yield_now(),
             result => { result.unwrap(); break; }
         }
     }
@@ -219,7 +220,7 @@ fn unchanged_applications_compose_real_replay_disk_and_udp_adapters() {
         let report = product.shutdown();
         report.camera.unwrap();
         match report.recorder {
-            Err(Error::Device(DeviceError::Busy)) if Instant::now() < deadline => thread::yield_now(),
+            Err(Error::Recording(RecordingError::Device(DeviceError::Busy))) if Instant::now() < deadline => thread::yield_now(),
             result => { result.unwrap(); break; }
         }
     }
