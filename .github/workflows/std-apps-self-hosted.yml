@@ -239,6 +239,7 @@ jobs:
           APP: ${{ matrix.app }}
         run: |
           set -euo pipefail
+          python3 tests/nuttx-std/test-patches.py
           for platform in mps2-an521-mock pico2-mock; do
             mkdir -p "target/firmware/$APP/$platform"
             if test "$platform" = mps2-an521-mock; then

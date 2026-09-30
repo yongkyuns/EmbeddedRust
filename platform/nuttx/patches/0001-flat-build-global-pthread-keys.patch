@@ -1,0 +1,259 @@
+From: nxrs maintainers <noreply@github.com>
+Subject: [PATCH] libc: optionally share pthread keys across flat task groups
+
+Rust std caches pthread keys in image-wide statics. In flat builds the image
+outlives an NSH application task group, so a later group can use the cached
+key without registering its destructor. Make the key namespace and destructor
+table image-wide when explicitly selected. The TLS values remain per-thread.
+
+diff --git a/include/nuttx/tls.h b/include/nuttx/tls.h
+index 4159035d00..65d8a3fa6f 100644
+--- a/include/nuttx/tls.h
++++ b/include/nuttx/tls.h
+@@ -91,6 +91,11 @@ extern "C"
+ 
+ typedef CODE void (*tls_dtor_t)(FAR void *);
+ 
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++tls_dtor_t tls_global_key_dtor(int key);
++int tls_global_key_delete(int key);
++#endif
++
+ /* This structure encapsulates all variables associated with getopt(). */
+ 
+ struct getopt_s
+diff --git a/libs/libc/pthread/pthread_keycreate.c b/libs/libc/pthread/pthread_keycreate.c
+index f819dd98e0..56afb76f42 100644
+--- a/libs/libc/pthread/pthread_keycreate.c
++++ b/libs/libc/pthread/pthread_keycreate.c
+@@ -35,6 +35,13 @@
+ 
+ #if defined(CONFIG_TLS_NELEM) && CONFIG_TLS_NELEM > 0
+ 
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++/* Flat-linked runtimes may retain keys beyond the creating task group. */
++
++static mutex_t g_keylock = NXMUTEX_INITIALIZER;
++static tls_dtor_t g_keydtors[CONFIG_TLS_NELEM];
++#endif
++
+ /****************************************************************************
+  * Private Functions
+  ****************************************************************************/
+@@ -48,6 +55,50 @@ static void pthread_destructor(FAR void *arg)
+   UNUSED(arg);
+ }
+ 
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++tls_dtor_t tls_global_key_dtor(int key)
++{
++  tls_dtor_t destructor;
++  int ret;
++
++  DEBUGASSERT(key >= 0 && key < CONFIG_TLS_NELEM);
++  ret = nxmutex_lock(&g_keylock);
++  if (ret < 0)
++    {
++      return NULL;
++    }
++
++  destructor = g_keydtors[key];
++  nxmutex_unlock(&g_keylock);
++  return destructor;
++}
++
++int tls_global_key_delete(int key)
++{
++  int ret;
++
++  DEBUGASSERT(key >= 0 && key < CONFIG_TLS_NELEM);
++  ret = nxmutex_lock(&g_keylock);
++  if (ret < 0)
++    {
++      return -ret;
++    }
++
++  if (g_keydtors[key] == NULL)
++    {
++      ret = EINVAL;
++    }
++  else
++    {
++      g_keydtors[key] = NULL;
++      ret = OK;
++    }
++
++  nxmutex_unlock(&g_keylock);
++  return ret;
++}
++#endif
++
+ /****************************************************************************
+  * Public Functions
+  ****************************************************************************/
+@@ -87,18 +138,26 @@ static void pthread_destructor(FAR void *arg)
+ int pthread_key_create(FAR pthread_key_t *key,
+                        CODE void (*destructor)(FAR void *))
+ {
++#ifndef CONFIG_TLS_GLOBAL_KEYS
+   FAR struct task_info_s *info = task_get_info();
++#endif
+   int candidate;
+   int ret;
+ 
+   DEBUGASSERT(key != NULL);
++#ifndef CONFIG_TLS_GLOBAL_KEYS
+   DEBUGASSERT(info != NULL);
++#endif
+ 
+   /* Search for an unused index.  This is done in a critical section here to
+-   * avoid concurrent modification of the group TLS index set.
++   * avoid concurrent modification of the selected TLS index set.
+    */
+ 
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++  ret = nxmutex_lock(&g_keylock);
++#else
+   ret = nxmutex_lock(&info->ta_lock);
++#endif
+   if (ret < 0)
+     {
+       return -ret;
+@@ -110,17 +169,29 @@ int pthread_key_create(FAR pthread_key_t *key,
+     {
+       /* Is this candidate index available? */
+ 
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++      if (g_keydtors[candidate] == NULL)
++#else
+       if (info->ta_tlsdtor[candidate] == NULL)
++#endif
+         {
+           /* Yes.. allocate the index and break out of the loop */
+ 
+           if (destructor)
+             {
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++              g_keydtors[candidate] = destructor;
++#else
+               info->ta_tlsdtor[candidate] = destructor;
++#endif
+             }
+           else
+             {
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++              g_keydtors[candidate] = pthread_destructor;
++#else
+               info->ta_tlsdtor[candidate] = pthread_destructor;
++#endif
+             }
+ 
+           *key = candidate;
+@@ -129,7 +200,11 @@ int pthread_key_create(FAR pthread_key_t *key,
+         }
+     }
+ 
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++  nxmutex_unlock(&g_keylock);
++#else
+   nxmutex_unlock(&info->ta_lock);
++#endif
+   return ret;
+ }
+ 
+diff --git a/libs/libc/pthread/pthread_keydelete.c b/libs/libc/pthread/pthread_keydelete.c
+index a8e5ceaffb..65e945835d 100644
+--- a/libs/libc/pthread/pthread_keydelete.c
++++ b/libs/libc/pthread/pthread_keydelete.c
+@@ -59,11 +59,17 @@
+ 
+ int pthread_key_delete(pthread_key_t key)
+ {
++#ifndef CONFIG_TLS_GLOBAL_KEYS
+   FAR struct task_info_s *info = task_get_info();
++#endif
+   FAR struct tls_info_s *tls = tls_get_info();
+   int ret = EINVAL;
+ 
++#ifndef CONFIG_TLS_GLOBAL_KEYS
+   DEBUGASSERT(info != NULL && tls != NULL);
++#else
++  DEBUGASSERT(tls != NULL);
++#endif
+   DEBUGASSERT(key >= 0 && key < CONFIG_TLS_NELEM);
+   if (key >= 0 && key < CONFIG_TLS_NELEM)
+     {
+@@ -71,6 +77,10 @@ int pthread_key_delete(pthread_key_t key)
+        * modification of the group TLS index set.
+        */
+ 
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++      ret = tls_global_key_delete(key);
++      tls->tl_elem[key] = 0;
++#else
+       ret = nxmutex_lock(&info->ta_lock);
+       if (ret == OK)
+         {
+@@ -82,6 +92,7 @@ int pthread_key_delete(pthread_key_t key)
+         {
+           ret = -ret;
+         }
++#endif
+     }
+ 
+   return ret;
+diff --git a/libs/libc/tls/Kconfig b/libs/libc/tls/Kconfig
+index 65627e2d49..fef90454c0 100644
+--- a/libs/libc/tls/Kconfig
++++ b/libs/libc/tls/Kconfig
+@@ -55,6 +55,17 @@ config TLS_NELEM
+ 		NOTE that the special value of CONFIG_TLS_NELEM disables these
+ 		TLS interfaces.
+ 
++config TLS_GLOBAL_KEYS
++	bool "Share pthread TLS keys across task groups in flat builds"
++	depends on BUILD_FLAT && TLS_NELEM > 0
++	default n
++	---help---
++		Use one image-wide pthread key namespace and destructor table.
++		This is needed when a flat-linked runtime caches keys in static
++		storage and an application is launched in multiple task groups.
++		TLS values remain private to each thread. The configured key limit
++		then applies to the whole image rather than to each task group.
++
+ config TLS_TASK_NELEM
+ 	int "Number of Task Local Storage elements"
+ 	depends on !BUILD_KERNEL
+diff --git a/libs/libc/tls/tls_destruct.c b/libs/libc/tls/tls_destruct.c
+index d968d707cb..706022f024 100644
+--- a/libs/libc/tls/tls_destruct.c
++++ b/libs/libc/tls/tls_destruct.c
+@@ -52,20 +52,28 @@
+ 
+ void tls_destruct(void)
+ {
++#ifndef CONFIG_TLS_GLOBAL_KEYS
+   FAR struct task_info_s *info = task_get_info();
++#endif
+   FAR struct tls_info_s *tls = tls_get_info();
+   FAR void *tls_elem_ptr = NULL;
+   tls_dtor_t destructor;
+   int candidate;
+ 
++#ifndef CONFIG_TLS_GLOBAL_KEYS
+   DEBUGASSERT(info != NULL);
++#endif
+ 
+   for (candidate = CONFIG_TLS_NELEM - 1; candidate >= 0; candidate--)
+     {
+       /* Is this candidate index available? */
+ 
+       tls_elem_ptr = (FAR void *)tls->tl_elem[candidate];
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++      destructor = tls_global_key_dtor(candidate);
++#else
+       destructor = info->ta_tlsdtor[candidate];
++#endif
+       if (tls_elem_ptr && destructor)
+         {
+           destructor(tls_elem_ptr);

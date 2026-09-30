@@ -89,7 +89,32 @@ reads occur while owners are intentionally paused after their measured work.
 None of these diagnostic observations is used as a throughput or latency
 benchmark.
 
-## Current repeated-launch failure
+## Flat-build pthread key patchset
+
+The pinned NuttX submodule and fork are not modified. At build time,
+`tools/apply-nuttx-patches.py` applies the ordered, ordinary unified diff in
+`platform/nuttx/patches/` to the freshly archived `$OUT/nuttx` copy. It checks
+the patch against the exact source context, fails closed on a source mismatch
+or repeat application, and writes `nuttx-patches.json` with the NuttX revision,
+patch digest, and before/after digests of every changed file. When moving to a
+newer NuttX version, either the patch still applies cleanly or the build stops
+so its semantics can be reviewed; there is no fuzzy application. The same
+series is applied to standalone matched C firmware, preserving the kernel
+configuration comparison.
+
+The opt-in `CONFIG_TLS_GLOBAL_KEYS` change uses an image-wide pthread key
+namespace and destructor table in flat builds. Per-thread TLS values remain
+per-thread. NuttX's default group-local behavior remains unchanged when the
+option is disabled. All nxrs Rust std firmware builds require the option; it
+is not an unconditional change to upstream NuttX. The global key limit is
+`CONFIG_TLS_NELEM` for the whole image, which is appropriate for the cached
+keys in this linked runtime but should be considered before upstreaming.
+
+The host patch tests exercise application, provenance, source drift, and
+reapplication. The MPS2 QEMU check remains the behavioral gate for destructor
+execution and complete heap reclamation.
+
+## Previous repeated-launch failure
 
 The [exact-head MPS2 run](https://github.com/yongkyuns/EmbeddedRust/actions/runs/36666402422)
 passes host tests but fails the strict heap gate for both apps. After warm-up,
@@ -109,10 +134,8 @@ Rust unwind tables to make these allocation sites visible; ordinary Pico 2
 build flags are unchanged.
 
 The product model of one Rust `main()` per MCU boot does not exercise this
-relaunch mismatch. This repeated-launch qualification must stay failing and
-the PR draft until the runtime/task-group TLS lifetime is resolved and the
-same exact heap gate passes. A larger leak allowance or one-boot substitute
-would test a different contract.
+relaunch mismatch. The exact repeated-launch gate remains unchanged; a larger
+leak allowance or one-boot substitute would test a different contract.
 
 Primary pinned NuttX implementation references:
 
