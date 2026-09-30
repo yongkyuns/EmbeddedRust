@@ -6,6 +6,11 @@ The normative HAL/resource ownership rules are in
 [hal-platform-architecture.md](hal-platform-architecture.md). The
 [roadmap](architecture-and-roadmap.md) describes remaining migrations.
 
+The [concurrency and event communication design discussion](concurrency-event-communication.md)
+records a proposed revision to active ownership and inter-service communication.
+It is intentionally non-normative while the ownership boundaries, wait backend,
+typed-message transport and bulk-data path are still being discussed.
+
 ## Applications
 
 Each production firmware image selects exactly one app. An app owns an ordinary
@@ -74,6 +79,13 @@ Their public constructors contain only service configuration and service
 connections.
 
 ## Event-driven service communication
+
+> **Current implementation, not settled target architecture.** The section below
+> documents the existing event-demo topology and its qualification properties.
+> In particular, the current IMU/GNSS-to-Fusion high-rate message paths should
+> not be generalized into a rule that normal data flow crosses active-object
+> queues. The proposed coarse ownership/control-plane model is discussed in
+> [concurrency and event communication](concurrency-event-communication.md).
 
 Active services use a **single-owner, single-inbox, run-to-completion** execution
 model built on Rust `std` synchronization primitives.
