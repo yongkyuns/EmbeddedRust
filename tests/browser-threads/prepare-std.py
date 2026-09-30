@@ -63,14 +63,12 @@ def prepare(source, output):
     assert target.resolve().is_relative_to(destination.resolve()), 'source symlink escapes SDK copy'
     target.write_bytes(changed)
     assert (source / RELATIVE).read_bytes() == original, 'installed SDK changed'
-    patch_file = output / 'site/std-tls.patch'
-    patch_file.write_text(''.join(difflib.unified_diff(
+    (output / 'site/std-tls.patch').write_text(''.join(difflib.unified_diff(
         original.decode().splitlines(True), changed.decode().splitlines(True),
         fromfile=str(RELATIVE), tofile=str(RELATIVE))))
     (output / 'site/std-patch.json').write_text(json.dumps({
         'mode': 'emscripten-atomic-tls-key-cleanup', 'source_path': str(RELATIVE),
         'original_blob': blob(original), 'patched_blob': blob(changed),
-        'patchset_sha256': {'std-tls.patch': hashlib.sha256(patch_file.read_bytes()).hexdigest()},
         'installed_toolchain_unchanged': True,
     }, indent=2) + '\n')
 

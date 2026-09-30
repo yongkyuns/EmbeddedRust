@@ -57,8 +57,8 @@ No installed SDK or upstream Rust source is changed.
 
 The browser-thread probe has a separate opt-in Rust `std` TLS-selection patch:
 `tests/browser-threads/prepare-std.py` generates `std-tls.patch` in a private
-SDK copy. It likewise pins the original source blob and records the patch
-SHA-256 in `std-patch.json`.
+SDK copy. It likewise pins the original and patched source blobs in
+`std-patch.json`.
 
 These generated Rust patchsets are reproducible from their pinned inputs, but
 are **not** checked-in static `.patch` files. Moving to a newer Rust SDK
