@@ -305,9 +305,13 @@ if __name__ == '__main__':
                 patches.append(name)
             records.append({'source_path': str(relative), 'original_blob': blob(original),
                             'patched_blob': blob(changed), 'patches': patches})
+        patch_names = libc_record['patches'] + [name for entry in records for name in entry['patches']]
+        patchset = {name: hashlib.sha256((args.output / name).read_bytes()).hexdigest()
+                    for name in patch_names}
         (args.output / 'std-patch.json').write_text(json.dumps({
             'mode': 'nuttx-parker-fcntl-sigign-and-libc-socket-align',
             'sdk': args.sdk, 'files': records, 'libc': libc_record,
+            'patchset_sha256': patchset,
             'startup_sig_ign': 0, 'libc_sockaddr_storage_alignment': 8,
             'installed_toolchain_unchanged': True,
         }, indent=2) + '\n')

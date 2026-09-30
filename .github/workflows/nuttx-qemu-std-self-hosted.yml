@@ -18,6 +18,9 @@ on:
       - 'Cargo.lock'
       - 'external/nuttx'
       - 'external/nuttx-apps'
+      - 'platform/nuttx/patches/**'
+      - 'platform/nuttx-apps/patches/**'
+      - 'tools/apply-nuttx-patches.py'
       - '.github/workflows/nuttx-qemu-std-self-hosted.yml'
 
 permissions:

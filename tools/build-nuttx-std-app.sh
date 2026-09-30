@@ -188,10 +188,9 @@ for pair in nuttx:nuttx nuttx-apps:apps; do
   actual=$(git -C "$ROOT/external/$source_name" rev-parse HEAD)
   test "$expected" = "$actual" || { echo "Unpinned $source_name" >&2; exit 1; }
   git -C "$ROOT/external/$source_name" archive "$expected" | tar -x -C "$OUT/$destination"
-  if test "$source_name" = nuttx; then
-    python3 "$ROOT/tools/apply-nuttx-patches.py" \
-      --source "$OUT/nuttx" --revision "$expected" --record "$OUT/nuttx-patches.json"
-  fi
+  python3 "$ROOT/tools/apply-nuttx-patches.py" \
+    --component "$source_name" --source "$OUT/$destination" --revision "$expected" \
+    --record "$OUT/$source_name-patches.json"
 done
 
 APP="$OUT/apps/examples/nxrs_std_app"

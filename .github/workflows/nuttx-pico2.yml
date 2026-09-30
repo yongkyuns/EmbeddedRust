@@ -10,6 +10,9 @@ on:
       - 'Cargo.lock'
       - 'external/nuttx'
       - 'external/nuttx-apps'
+      - 'platform/nuttx/patches/**'
+      - 'platform/nuttx-apps/patches/**'
+      - 'tools/apply-nuttx-patches.py'
   workflow_dispatch:
 permissions:
   contents: read

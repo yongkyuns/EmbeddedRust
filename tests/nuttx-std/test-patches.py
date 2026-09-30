@@ -1,4 +1,4 @@
-"""Fail-closed checks for the NuttX source patch series."""
+"""Fail-closed checks for both pinned NuttX upstream patch series."""
 
 import hashlib
 import json
@@ -10,9 +10,12 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-UPSTREAM = ROOT / "external/nuttx"
-PATCH = ROOT / "platform/nuttx/patches/0001-flat-build-global-pthread-keys.patch"
 TOOL = ROOT / "tools/apply-nuttx-patches.py"
+SERIES = {
+    "nuttx": ("libs/libc/tls/Kconfig", ROOT / "platform/nuttx/patches"),
+    "nuttx-apps": ("wireless/bluetooth/nimble/Makefile.nimble",
+                   ROOT / "platform/nuttx-apps/patches"),
+}
 
 
 def digest(path):
@@ -21,63 +24,87 @@ def digest(path):
 
 class PatchSeriesTests(unittest.TestCase):
     def setUp(self):
-        # Mirror target/firmware/...: the source archive is nested inside the
-        # nxrs Git checkout, but must not inherit that checkout's Git root.
+        # Archive-like copies nested inside nxrs must not inherit its Git root.
         self.temp = tempfile.TemporaryDirectory(dir=ROOT)
         self.addCleanup(self.temp.cleanup)
-        self.source = Path(self.temp.name) / "nuttx"
-        self.source.mkdir()
-        names = [line.split("\t", 2)[2] for line in subprocess.check_output(
-            ["git", "apply", "--numstat", str(PATCH)], text=True,
-        ).splitlines()]
-        self.original = {}
-        for name in names:
-            destination = self.source / name
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(UPSTREAM / name, destination)
-            self.original[name] = digest(destination)
-        self.record = Path(self.temp.name) / "patches.json"
+        self.base = Path(self.temp.name)
 
-    def apply(self):
+    def fixture(self, component):
+        marker, patch_dir = SERIES[component]
+        upstream = ROOT / "external" / component
+        source = self.base / component
+        source.mkdir()
+        patches = sorted(patch_dir.glob("*.patch"))
+        self.assertTrue(patches)
+        names = {marker}
+        for patch in patches:
+            names.update(line.split("\t", 2)[2] for line in subprocess.check_output(
+                ["git", "apply", "--numstat", str(patch)], text=True,
+            ).splitlines())
+        original = {}
+        for name in names:
+            if not (upstream / name).is_file():
+                continue  # New files must be created by the series.
+            destination = source / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(upstream / name, destination)
+            original[name] = digest(destination)
+        return source, upstream, patches, original
+
+    def apply(self, component, source):
         return subprocess.run(
-            ["python3", str(TOOL), "--source", str(self.source),
-             "--revision", "test-revision", "--record", str(self.record)],
+            ["python3", str(TOOL), "--component", component,
+             "--source", str(source), "--revision", "test-revision",
+             "--record", str(self.base / f"{component}-patches.json")],
             text=True, capture_output=True,
         )
 
-    def test_applies_only_to_copy_and_records_provenance(self):
-        result = self.apply()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        ledger = json.loads(self.record.read_text())
-        self.assertEqual(ledger["nuttx_revision"], "test-revision")
-        self.assertEqual(ledger["patches"][0]["sha256"], digest(PATCH))
-        for name, hashes in ledger["patches"][0]["files"].items():
-            self.assertEqual(hashes["before"], self.original[name])
-            self.assertEqual(hashes["after"], digest(self.source / name))
-            self.assertEqual(digest(UPSTREAM / name), self.original[name])
-        self.assertIn("config TLS_GLOBAL_KEYS", (self.source / "libs/libc/tls/Kconfig").read_text())
-        self.assertIn("config TLS_DTOR_ITERATIONS", (self.source / "libs/libc/tls/Kconfig").read_text())
-        self.assertIn("tls->tl_elem[candidate] = 0;", (self.source / "libs/libc/tls/tls_destruct.c").read_text())
-        self.assertIn("g_keyused[candidate] = true", (self.source / "libs/libc/pthread/pthread_keycreate.c").read_text())
-        self.assertIn("g_keydtors[candidate] = destructor", (self.source / "libs/libc/pthread/pthread_keycreate.c").read_text())
+    def test_both_series_apply_to_copies_and_record_provenance(self):
+        for component in SERIES:
+            with self.subTest(component=component):
+                source, upstream, patches, original = self.fixture(component)
+                result = self.apply(component, source)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                ledger = json.loads((self.base / f"{component}-patches.json").read_text())
+                self.assertEqual(ledger["component"], component)
+                self.assertEqual(ledger["upstream_revision"], "test-revision")
+                self.assertEqual(len(ledger["patches"]), len(patches))
+                latest = {}
+                for entry, patch in zip(ledger["patches"], patches):
+                    self.assertEqual(entry["name"], patch.name)
+                    self.assertEqual(entry["sha256"], digest(patch))
+                    for name, hashes in entry["files"].items():
+                        self.assertEqual(hashes["before"], latest.get(name, original.get(name)))
+                        latest[name] = hashes["after"]
+                for name, after in latest.items():
+                    self.assertEqual(after, digest(source / name))
+                for name, before in original.items():
+                    self.assertEqual(digest(upstream / name), before)
+                if component == "nuttx":
+                    self.assertTrue((source / "arch/xtensa/src/esp32s3/esp32s3_camera.c").is_file())
+                    self.assertIn("config TLS_GLOBAL_KEYS", (source / "libs/libc/tls/Kconfig").read_text())
 
     def test_rejects_reapplication_without_mutation(self):
-        self.assertEqual(self.apply().returncode, 0)
-        before = {name: digest(self.source / name) for name in self.original}
-        result = self.apply()
+        source, _, _, _ = self.fixture("nuttx")
+        self.assertEqual(self.apply("nuttx", source).returncode, 0)
+        witness = source / "arch/xtensa/src/esp32s3/esp32s3_ble.c"
+        before = digest(witness)
+        result = self.apply("nuttx", source)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("already applied", result.stderr)
-        self.assertEqual(before, {name: digest(self.source / name) for name in self.original})
+        self.assertEqual(digest(witness), before)
 
     def test_rejects_incompatible_source_without_mutation(self):
-        path = self.source / "libs/libc/tls/Kconfig"
-        path.write_text(path.read_text().replace("TLS interfaces.\n\nconfig TLS_TASK_NELEM", "CHANGED interfaces.\n\nconfig TLS_TASK_NELEM"))
-        before = {name: digest(self.source / name) for name in self.original}
-        result = self.apply()
+        source, _, _, _ = self.fixture("nuttx")
+        witness = source / "arch/xtensa/src/esp32s3/esp32s3_ble.c"
+        witness.write_text(witness.read_text().replace(
+            "#include <nuttx/wqueue.h>", "#include <nuttx/different.h>"))
+        before = digest(witness)
+        result = self.apply("nuttx", source)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("incompatible", result.stderr)
-        self.assertEqual(before, {name: digest(self.source / name) for name in self.original})
-        self.assertFalse(self.record.exists())
+        self.assertEqual(digest(witness), before)
+        self.assertFalse((self.base / "nuttx-patches.json").exists())
 
 
 if __name__ == "__main__":
