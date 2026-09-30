@@ -15,7 +15,7 @@ class DeploymentTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
-        (self.root / "Cargo.toml").write_text('[workspace]\\nresolver = "2"\\n')
+        (self.root / "Cargo.toml").write_text('[workspace]\nresolver = "2"\n')
         (self.root / "app/demo").mkdir(parents=True)
         self.app_manifest = self.root / "app/demo/Cargo.toml"
         self.app_manifest.write_text(
