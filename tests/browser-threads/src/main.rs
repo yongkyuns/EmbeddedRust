@@ -55,6 +55,7 @@ fn main() {
     let main_id = thread::current().id();
     let mut checksum = 0u64;
     for round in 0..ROUNDS {
+        println!("NXRS_ROUND_{round}_START");
         let mut owners = Vec::new();
         let progress = Arc::new([AtomicUsize::new(0), AtomicUsize::new(0)]);
         for factor in 1..=2u64 {
@@ -95,7 +96,9 @@ fn main() {
                     sum
                 })
                 .expect("std thread creation");
+            println!("NXRS_ROUND_{round}_WORKER_{factor}_SPAWNED");
             let worker_id = ready_rx.recv_timeout(Duration::from_secs(10)).unwrap();
+            println!("NXRS_ROUND_{round}_WORKER_{factor}_READY");
             assert_ne!(worker_id, main_id);
             // Worker cannot drain rx until gate release: no sleep-based race.
             tx.send(1).unwrap();
@@ -107,16 +110,19 @@ fn main() {
         for (_, gate, _, _) in &owners {
             gate.send(()).unwrap();
         }
+        println!("NXRS_ROUND_{round}_GATES_RELEASED");
         for value in 3..=MESSAGES {
             for (tx, _, _, _) in &owners {
                 tx.send(value).unwrap();
             }
         }
+        println!("NXRS_ROUND_{round}_MESSAGES_SENT");
         for (tx, gate, worker, _) in owners {
             drop(tx);
             drop(gate);
             checksum += worker.join().expect("worker completed without panic");
         }
+        println!("NXRS_ROUND_{round}_WORKERS_JOINED");
         assert_eq!(LOCAL.get(), 99);
         // join must include thread-local destructors, not just the closure.
         let ended = ((round + 1) * 2) as usize;
