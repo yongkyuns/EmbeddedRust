@@ -78,12 +78,13 @@ class StdApps(unittest.TestCase):
             ("ao-stress", ("--duration-ms", "0")),
             ("ao-stress", ("--work", "100001")),
             ("ao-stress", ("--scenario", "missing")),
+            ("ao-stress", ("--stack-report",)),
             ("ao-stress", ("--workers",)),
             ("ao-stress", ("--mystery", "1")),
         ]:
             with self.subTest(name=name, args=args):
                 self.run_app(name, *args, success=False)
-
+        
     def test_false_success_transcripts_rejected(self):
         with self.assertRaises(AssertionError):
             validate_std("STD_DEMO PASS cases=9\n")

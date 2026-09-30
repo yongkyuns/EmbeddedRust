@@ -22,18 +22,39 @@ on:
       - 'external/nuttx'
       - 'external/nuttx-apps'
       - '.github/workflows/std-apps-self-hosted.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'service/**'
+      - 'hal/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.cargo/config.toml'
+      - 'platform/firmware/**'
+      - 'platform/nuttx/**'
+      - 'tools/build-nuttx-std-app.sh'
+      - 'tools/check-architecture.py'
+      - 'tools/check-deployment.py'
+      - 'tests/host/**'
+      - 'tests/portable/**'
+      - 'tests/native/**'
+      - 'tests/nuttx-std/**'
+      - 'external/nuttx'
+      - 'external/nuttx-apps'
+      - '.github/workflows/std-apps-self-hosted.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: std-apps-${{ github.ref }}
+  group: std-apps-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   host:
-    if: github.repository == 'yongkyuns/nxrs' && github.actor == 'yongkyuns'
+    if: github.repository == 'yongkyuns/EmbeddedRust' && github.actor == 'yongkyuns'
     runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
     timeout-minutes: 15
     permissions:
@@ -70,6 +91,7 @@ jobs:
           cargo +1.90.0 clippy --locked -p nxrs-std-demo -p nxrs-ao-stress --all-targets -- -D warnings
           cargo +1.90.0 build --locked -p nxrs-std-demo -p nxrs-ao-stress
           python3 -m unittest discover -s tests/host -p test_std_apps.py -v
+          python3 -m unittest discover -s tests/host -p test_nuttx_memory.py -v
       - name: Qualify workspace and native regressions
         shell: bash
         run: |
@@ -176,7 +198,7 @@ jobs:
 
   arm-firmware:
     needs: host
-    if: github.repository == 'yongkyuns/nxrs' && github.actor == 'yongkyuns'
+    if: github.repository == 'yongkyuns/EmbeddedRust' && github.actor == 'yongkyuns'
     strategy:
       fail-fast: false
       matrix:

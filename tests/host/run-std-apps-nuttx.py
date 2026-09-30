@@ -7,6 +7,7 @@ in-app success markers and cooperative shutdown. Hardware timing is not inferred
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 import pty
@@ -16,6 +17,7 @@ import subprocess
 import sys
 import time
 
+from test_nuttx_memory import parse_meminfo, validate_heap_cycles, validate_stack_output
 from test_std_apps import validate_std, validate_stress
 
 
@@ -69,15 +71,71 @@ def run(qemu: Path, image: Path, app: str, log: Path) -> None:
 
         assert "NuttShell" in until("nsh>"), "not a NuttX boot"
         nsh_name = app.replace("-", "_")
-        # Invoke twice in one boot to exercise TLS/thread teardown and restart.
+        validator = validate_std if app == "std-demo" else validate_stress
+
+        # Target-side lifecycle characterization is deliberately independent of
+        # Rust GlobalAlloc instrumentation. /proc/meminfo causes NuttX to reclaim
+        # delayed frees before it reports used/free/largest-free values.
+        baseline_heap = parse_meminfo(command("cat /proc/meminfo"))
+        memory_command = nsh_name
+        if app == "ao-stress":
+            memory_command += " --stack-report --shutdown-ms 5000"
+        warm_output = command(memory_command)
+        validator(warm_output)
+        if app == "ao-stress":
+            validate_stack_output(warm_output)
+        warm_heap = parse_meminfo(command("cat /proc/meminfo"))
+
+        checked_heap = []
+        worst_stacks: dict[str, int] = {}
+        for _ in range(5):
+            output = command(memory_command)
+            validator(output)
+            if app == "ao-stress":
+                for row in validate_stack_output(output):
+                    worst_stacks[row["name"]] = max(
+                        worst_stacks.get(row["name"], 0), row["stack_used"]
+                    )
+            checked_heap.append(parse_meminfo(command("cat /proc/meminfo")))
+
+        try:
+            heap_results = validate_heap_cycles(app, baseline_heap, warm_heap, checked_heap)
+        except AssertionError:
+            # Allocation ownership diagnostics: CONFIG_MM_BACKTRACE=0 tags
+            # each heap node with its allocating PID without collecting a
+            # call stack. NuttX's "leak" selector prints nodes whose owner PID
+            # is no longer alive. Keep this on failure only so passing runs do
+            # not add diagnostic console traffic.
+            command("echo leak > /proc/memdump")
+            command("echo biggest > /proc/memdump")
+            raise
+        for row in heap_results:
+            line = "NUTTX_HEAP_RESULT " + json.dumps(row, separators=(",", ":")) + "\n"
+            transcript.append(line)
+            sys.stdout.write(line)
+        if worst_stacks:
+            line = "NUTTX_STACK_WORST " + json.dumps(
+                {"app": app, "checked_runs": 5, "worst_used_by_owner": worst_stacks},
+                separators=(",", ":"),
+                sort_keys=True,
+            ) + "\n"
+            transcript.append(line)
+            sys.stdout.write(line)
+
+        # Also invoke the uninstrumented/default CLI path twice in one boot so
+        # the diagnostic barrier cannot hide an ordinary restart regression.
         for _ in range(2):
             output = command(nsh_name)
-            (validate_std if app == "std-demo" else validate_stress)(output)
+            validator(output)
+
         invalid = command(nsh_name + (" --case missing" if app == "std-demo" else " --capacity 0"))
         prefix = "STD_DEMO" if app == "std-demo" else "AO_STRESS"
         assert prefix + " FAIL" in invalid, invalid
         assert prefix + " PASS" not in invalid, invalid
-        print(f"\nNUTTX_STD_APP PASS app={app} machine=mps2-an521 restarts=2")
+        print(
+            f"\nNUTTX_STD_APP PASS app={app} machine=mps2-an521 "
+            "heap_checked_cycles=5 normal_restarts=2"
+        )
     finally:
         if process is not None and process.poll() is None:
             os.killpg(process.pid, signal.SIGKILL)

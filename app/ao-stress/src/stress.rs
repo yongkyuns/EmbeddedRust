@@ -66,7 +66,7 @@ pub(super) enum Scenario {
 }
 impl Scenario {
     pub const ALL: [Self; 4] = [Self::Steady, Self::Burst, Self::SlowConsumer, Self::CpuLoad];
-    fn name(self) -> &'static str {
+    pub(super) fn name(self) -> &'static str {
         match self {
             Self::Steady => "steady",
             Self::Burst => "burst",
@@ -186,23 +186,54 @@ enum Outcome {
 // Only startup/cancellation are shared. Work state and statistics stay private
 // to each owner, and are moved to the app after termination.
 type Gate = Arc<(Mutex<Option<Instant>>, Condvar)>;
+type CompletionGate = Arc<(Mutex<bool>, Condvar)>;
 struct Threads {
     cancel: Arc<AtomicBool>,
     gate: Gate,
     reports: Option<SyncSender<Outcome>>,
+    completion_ready: Option<SyncSender<()>>,
+    completion_gate: Option<CompletionGate>,
     handles: Vec<JoinHandle<()>>,
 }
 impl Threads {
     fn new(count: usize) -> (Self, Receiver<Outcome>) {
+        let (threads, reports, ready) = Self::new_inner(count, false);
+        debug_assert!(ready.is_none());
+        (threads, reports)
+    }
+
+    fn observed(count: usize) -> (Self, Receiver<Outcome>, Receiver<()>) {
+        let (threads, reports, ready) = Self::new_inner(count, true);
+        (
+            threads,
+            reports,
+            ready.expect("observed threads have completion receiver"),
+        )
+    }
+
+    fn new_inner(count: usize, observed: bool) -> (Self, Receiver<Outcome>, Option<Receiver<()>>) {
         let (reports, receiver) = sync_channel(count);
+        let (completion_ready, ready_receiver, completion_gate) = if observed {
+            let (sender, receiver) = sync_channel(count);
+            (
+                Some(sender),
+                Some(receiver),
+                Some(Arc::new((Mutex::new(false), Condvar::new()))),
+            )
+        } else {
+            (None, None, None)
+        };
         (
             Self {
                 cancel: Arc::new(AtomicBool::new(false)),
                 gate: Arc::new((Mutex::new(None), Condvar::new())),
                 reports: Some(reports),
+                completion_ready,
+                completion_gate,
                 handles: Vec::with_capacity(count),
             },
             receiver,
+            ready_receiver,
         )
     }
     fn spawn<F>(&mut self, name: String, body: F) -> Result<(), String>
@@ -212,6 +243,8 @@ impl Threads {
         let cancel = self.cancel.clone();
         let gate = self.gate.clone();
         let reports = self.reports.as_ref().unwrap().clone();
+        let completion_ready = self.completion_ready.clone();
+        let completion_gate = self.completion_gate.clone();
         let handle = thread::Builder::new()
             .name(name)
             .stack_size(STACK_BYTES)
@@ -226,8 +259,24 @@ impl Threads {
                 }
                 let start = ready.unwrap();
                 drop(ready);
+
+                let outcome = body(start, &cancel);
+                if let (Some(ready), Some(gate)) = (completion_ready, completion_gate) {
+                    if ready.try_send(()).is_err() {
+                        return;
+                    }
+                    let (lock, changed) = &*gate;
+                    let mut released = lock.lock().unwrap();
+                    while !*released && !cancel.load(Ordering::Acquire) {
+                        released = changed.wait(released).unwrap();
+                    }
+                    if cancel.load(Ordering::Acquire) {
+                        return;
+                    }
+                }
+
                 // One result per thread; this preallocated channel has count slots.
-                let _ = reports.try_send(body(start, &cancel));
+                let _ = reports.try_send(outcome);
             })
             .map_err(|error| format!("thread creation failed: {error}"))?;
         self.handles.push(handle);
@@ -240,6 +289,14 @@ impl Threads {
         self.reports.take();
         start
     }
+    fn release_completion(&self) {
+        if let Some(gate) = &self.completion_gate {
+            let (lock, changed) = &**gate;
+            *lock.lock().unwrap_or_else(|error| error.into_inner()) = true;
+            changed.notify_all();
+        }
+    }
+
     fn join_all(&mut self) -> Result<(), String> {
         let mut panicked = false;
         for handle in self.handles.drain(..) {
@@ -263,6 +320,7 @@ impl Drop for Threads {
         let guard = self.gate.0.lock().unwrap_or_else(|e| e.into_inner());
         self.gate.1.notify_all();
         drop(guard);
+        self.release_completion();
         let _ = self.join_all();
     }
 }
@@ -533,9 +591,36 @@ impl Report {
 }
 
 pub(super) fn run(config: &Config, scenario: Scenario) -> Result<Report, String> {
+    run_inner(config, scenario, None)
+}
+
+#[cfg(any(test, target_os = "nuttx"))]
+pub(super) fn run_observed<F>(
+    config: &Config,
+    scenario: Scenario,
+    observer: &mut F,
+) -> Result<Report, String>
+where
+    F: FnMut() -> Result<(), String>,
+{
+    run_inner(config, scenario, Some(observer))
+}
+
+fn run_inner(
+    config: &Config,
+    scenario: Scenario,
+    observer: Option<&mut dyn FnMut() -> Result<(), String>>,
+) -> Result<Report, String> {
     config.validate()?;
     let count = config.producers + config.workers + 1;
-    let (mut threads, reports) = Threads::new(count);
+    let observed = observer.is_some();
+    let (mut threads, reports, completion_ready) = if observed {
+        let (threads, reports, ready) = Threads::observed(count);
+        (threads, reports, Some(ready))
+    } else {
+        let (threads, reports) = Threads::new(count);
+        (threads, reports, None)
+    };
     let (output, collector_inbox) = bounded(config.capacity);
     let cfg = config.clone();
     threads.spawn("ao-collector".into(), move |_, cancel| {
@@ -569,6 +654,23 @@ pub(super) fn run(config: &Config, scenario: Scenario) -> Result<Report, String>
     };
     let start = threads.release();
     let deadline = start + config.duration + config.shutdown;
+
+    if let Some(ready) = completion_ready {
+        for _ in 0..count {
+            ready
+                .recv_timeout(deadline.saturating_duration_since(Instant::now()))
+                .map_err(|error| {
+                    format!(
+                        "completion-observer deadline/disconnect: {error}; cancelling and joining owners"
+                    )
+                })?;
+        }
+        if let Some(observe) = observer {
+            observe()?;
+        }
+        threads.release_completion();
+    }
+
     let mut collectors = 0;
     for _ in 0..count {
         match reports
@@ -663,6 +765,20 @@ mod tests {
         for _ in 0..3 {
             run(&cfg, Scenario::SlowConsumer).unwrap();
         }
+    }
+    #[test]
+    fn completion_observer_runs_once_before_join() {
+        let cfg = Config {
+            duration: Duration::from_millis(30),
+            ..Config::default()
+        };
+        let mut calls = 0;
+        run_observed(&cfg, Scenario::Steady, &mut || {
+            calls += 1;
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(calls, 1);
     }
     #[test]
     fn partial_startup_is_cancelled_and_joined() {
