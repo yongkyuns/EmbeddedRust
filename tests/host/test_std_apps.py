@@ -84,7 +84,7 @@ class StdApps(unittest.TestCase):
         ]:
             with self.subTest(name=name, args=args):
                 self.run_app(name, *args, success=False)
-        
+
     def test_false_success_transcripts_rejected(self):
         with self.assertRaises(AssertionError):
             validate_std("STD_DEMO PASS cases=9\n")
