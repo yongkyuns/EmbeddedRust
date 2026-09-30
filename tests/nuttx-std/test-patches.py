@@ -21,7 +21,9 @@ def digest(path):
 
 class PatchSeriesTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
+        # Mirror target/firmware/...: the source archive is nested inside the
+        # nxrs Git checkout, but must not inherit that checkout's Git root.
+        self.temp = tempfile.TemporaryDirectory(dir=ROOT)
         self.addCleanup(self.temp.cleanup)
         self.source = Path(self.temp.name) / "nuttx"
         self.source.mkdir()

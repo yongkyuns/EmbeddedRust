@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 
@@ -17,10 +18,16 @@ def sha256(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def git_env(source):
+    # A build archive may live under the nxrs checkout. Prevent git apply from
+    # treating its paths as relative to that unrelated outer repository.
+    return {**os.environ, "GIT_CEILING_DIRECTORIES": str(source.parent)}
+
+
 def run_git_apply(source, *options, patch):
     return subprocess.run(
         ["git", "apply", *options, str(patch)],
-        cwd=source, text=True, capture_output=True,
+        cwd=source, env=git_env(source), text=True, capture_output=True,
     )
 
 
@@ -36,7 +43,7 @@ def apply(source, revision, record):
         patch = PATCH_DIR / name
         paths = [line.split("\t", 2)[2] for line in subprocess.check_output(
             ["git", "apply", "--numstat", str(patch)],
-            cwd=source, text=True,
+            cwd=source, env=git_env(source), text=True,
         ).splitlines()]
         if not paths or any(not (source / path).is_file() for path in paths):
             raise ValueError(f"patch {name} references missing source files")
