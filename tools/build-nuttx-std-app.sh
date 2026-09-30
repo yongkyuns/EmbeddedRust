@@ -188,6 +188,10 @@ for pair in nuttx:nuttx nuttx-apps:apps; do
   actual=$(git -C "$ROOT/external/$source_name" rev-parse HEAD)
   test "$expected" = "$actual" || { echo "Unpinned $source_name" >&2; exit 1; }
   git -C "$ROOT/external/$source_name" archive "$expected" | tar -x -C "$OUT/$destination"
+  if test "$source_name" = nuttx; then
+    python3 "$ROOT/tools/apply-nuttx-patches.py" \
+      --source "$OUT/nuttx" --revision "$expected" --record "$OUT/nuttx-patches.json"
+  fi
 done
 
 APP="$OUT/apps/examples/nxrs_std_app"
@@ -214,7 +218,9 @@ done
 for symbol in EXAMPLES_NXRS_STD_APP SYSTEM_TIME64 FS_LARGEFILE DEV_URANDOM   SCHED_WAITPID SCHED_HAVE_PARENT SCHED_CHILD_STATUS NSH_DISABLEBG NSH_ARGCAT; do
   kconfig-tweak --enable "CONFIG_$symbol"
 done
+kconfig-tweak --enable CONFIG_TLS_GLOBAL_KEYS
 kconfig-tweak --set-val CONFIG_TLS_NELEM 16
+kconfig-tweak --set-val CONFIG_TLS_DTOR_ITERATIONS 4
 kconfig-tweak --set-val CONFIG_TLS_NCLEANUP 16
 kconfig-tweak --set-val CONFIG_RR_INTERVAL 10
 make olddefconfig
@@ -227,7 +233,7 @@ for required in "${NUTTX_REQUIRE[@]:-}"; do
     exit 1
   }
 done
-for required in   CONFIG_BUILD_FLAT=y CONFIG_EXAMPLES_NXRS_STD_APP=y CONFIG_SYSTEM_TIME64=y   CONFIG_FS_LARGEFILE=y CONFIG_TLS_NELEM=16 CONFIG_TLS_NCLEANUP=16   CONFIG_SCHED_WAITPID=y CONFIG_SCHED_HAVE_PARENT=y CONFIG_SCHED_CHILD_STATUS=y   CONFIG_NSH_DISABLEBG=y CONFIG_NSH_ARGCAT=y CONFIG_RR_INTERVAL=10; do
+for required in   CONFIG_BUILD_FLAT=y CONFIG_EXAMPLES_NXRS_STD_APP=y CONFIG_SYSTEM_TIME64=y   CONFIG_FS_LARGEFILE=y CONFIG_TLS_GLOBAL_KEYS=y CONFIG_TLS_NELEM=16 CONFIG_TLS_DTOR_ITERATIONS=4 CONFIG_TLS_NCLEANUP=16   CONFIG_SCHED_WAITPID=y CONFIG_SCHED_HAVE_PARENT=y CONFIG_SCHED_CHILD_STATUS=y   CONFIG_NSH_DISABLEBG=y CONFIG_NSH_ARGCAT=y CONFIG_RR_INTERVAL=10; do
   grep -qx "$required" .config || { echo "Unresolved std requirement: $required" >&2; exit 1; }
 done
 if [[ -n "${NUTTX_FORBID_REGEX:-}" ]] && grep -Eq "$NUTTX_FORBID_REGEX" .config; then
@@ -297,6 +303,11 @@ export CARGO_PROFILE_RELEASE_STRIP=none
 export CARGO_PROFILE_RELEASE_DEBUG=1
 export NUTTX_STD_LINK_LOG="$OUT/rust-link.json"
 export RUSTFLAGS="-C panic=abort -C linker=$ROOT/tests/nuttx-std/link.py"
+if [[ "${NXRS_NUTTX_DIAGNOSTIC_UNWIND:-0}" == 1 ]]; then
+  # The MPS2 ARM EHABI backtracer needs unwind entries in Rust code too.
+  # Keep this opt-in: extra tables change the ordinary firmware image.
+  export RUSTFLAGS="$RUSTFLAGS -C force-unwind-tables=yes"
+fi
 
 "$CARGO_BIN" build --locked --release \
   -p "$NXRS_APP_PACKAGE" "${HAL_PACKAGES[@]}" \

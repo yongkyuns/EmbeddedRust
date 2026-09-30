@@ -1,0 +1,319 @@
+From: nxrs maintainers <noreply@github.com>
+Subject: [PATCH] libc: support image-wide pthread keys and deferred cleanup
+
+Rust std caches pthread keys in image-wide statics. In flat builds the image
+outlives an NSH application task group, so a later group can use the cached
+key without registering its destructor. Its guard also defers thread cleanup
+to a later TLS destructor pass. Preserve values of keys without destructors
+until that cleanup runs. Provide opt-in image-wide key lifetime and bounded
+destructor passes; TLS values remain per-thread.
+
+diff --git a/include/nuttx/tls.h b/include/nuttx/tls.h
+index 4159035d00..65d8a3fa6f 100644
+--- a/include/nuttx/tls.h
++++ b/include/nuttx/tls.h
+@@ -91,6 +91,11 @@ extern "C"
+ 
+ typedef CODE void (*tls_dtor_t)(FAR void *);
+ 
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++tls_dtor_t tls_global_key_dtor(int key);
++int tls_global_key_delete(int key);
++#endif
++
+ /* This structure encapsulates all variables associated with getopt(). */
+ 
+ struct getopt_s
+diff --git a/libs/libc/pthread/pthread_keycreate.c b/libs/libc/pthread/pthread_keycreate.c
+index f819dd98e0..04708c648d 100644
+--- a/libs/libc/pthread/pthread_keycreate.c
++++ b/libs/libc/pthread/pthread_keycreate.c
+@@ -29,12 +29,21 @@
+ #include <pthread.h>
+ #include <assert.h>
+ #include <errno.h>
++#include <stdbool.h>
+ 
+ #include <nuttx/mutex.h>
+ #include <nuttx/tls.h>
+ 
+ #if defined(CONFIG_TLS_NELEM) && CONFIG_TLS_NELEM > 0
+ 
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++/* Flat-linked runtimes may retain keys beyond the creating task group. */
++
++static mutex_t g_keylock = NXMUTEX_INITIALIZER;
++static bool g_keyused[CONFIG_TLS_NELEM];
++static tls_dtor_t g_keydtors[CONFIG_TLS_NELEM];
++#endif
++
+ /****************************************************************************
+  * Private Functions
+  ****************************************************************************/
+@@ -43,10 +52,57 @@
+  * Name: pthread_destructor
+  ****************************************************************************/
+ 
++#ifndef CONFIG_TLS_GLOBAL_KEYS
+ static void pthread_destructor(FAR void *arg)
+ {
+   UNUSED(arg);
+ }
++#endif
++
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++tls_dtor_t tls_global_key_dtor(int key)
++{
++  tls_dtor_t destructor;
++  int ret;
++
++  DEBUGASSERT(key >= 0 && key < CONFIG_TLS_NELEM);
++  ret = nxmutex_lock(&g_keylock);
++  if (ret < 0)
++    {
++      return NULL;
++    }
++
++  destructor = g_keydtors[key];
++  nxmutex_unlock(&g_keylock);
++  return destructor;
++}
++
++int tls_global_key_delete(int key)
++{
++  int ret;
++
++  DEBUGASSERT(key >= 0 && key < CONFIG_TLS_NELEM);
++  ret = nxmutex_lock(&g_keylock);
++  if (ret < 0)
++    {
++      return -ret;
++    }
++
++  if (!g_keyused[key])
++    {
++      ret = EINVAL;
++    }
++  else
++    {
++      g_keydtors[key] = NULL;
++      g_keyused[key] = false;
++      ret = OK;
++    }
++
++  nxmutex_unlock(&g_keylock);
++  return ret;
++}
++#endif
+ 
+ /****************************************************************************
+  * Public Functions
+@@ -87,18 +143,26 @@ static void pthread_destructor(FAR void *arg)
+ int pthread_key_create(FAR pthread_key_t *key,
+                        CODE void (*destructor)(FAR void *))
+ {
++#ifndef CONFIG_TLS_GLOBAL_KEYS
+   FAR struct task_info_s *info = task_get_info();
++#endif
+   int candidate;
+   int ret;
+ 
+   DEBUGASSERT(key != NULL);
++#ifndef CONFIG_TLS_GLOBAL_KEYS
+   DEBUGASSERT(info != NULL);
++#endif
+ 
+   /* Search for an unused index.  This is done in a critical section here to
+-   * avoid concurrent modification of the group TLS index set.
++   * avoid concurrent modification of the selected TLS index set.
+    */
+ 
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++  ret = nxmutex_lock(&g_keylock);
++#else
+   ret = nxmutex_lock(&info->ta_lock);
++#endif
+   if (ret < 0)
+     {
+       return -ret;
+@@ -110,10 +174,18 @@ int pthread_key_create(FAR pthread_key_t *key,
+     {
+       /* Is this candidate index available? */
+ 
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++      if (!g_keyused[candidate])
++#else
+       if (info->ta_tlsdtor[candidate] == NULL)
++#endif
+         {
+           /* Yes.. allocate the index and break out of the loop */
+ 
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++          g_keyused[candidate] = true;
++          g_keydtors[candidate] = destructor;
++#else
+           if (destructor)
+             {
+               info->ta_tlsdtor[candidate] = destructor;
+@@ -122,6 +194,7 @@ int pthread_key_create(FAR pthread_key_t *key,
+             {
+               info->ta_tlsdtor[candidate] = pthread_destructor;
+             }
++#endif
+ 
+           *key = candidate;
+           ret = OK;
+@@ -129,7 +202,11 @@ int pthread_key_create(FAR pthread_key_t *key,
+         }
+     }
+ 
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++  nxmutex_unlock(&g_keylock);
++#else
+   nxmutex_unlock(&info->ta_lock);
++#endif
+   return ret;
+ }
+ 
+diff --git a/libs/libc/pthread/pthread_keydelete.c b/libs/libc/pthread/pthread_keydelete.c
+index a8e5ceaffb..65e945835d 100644
+--- a/libs/libc/pthread/pthread_keydelete.c
++++ b/libs/libc/pthread/pthread_keydelete.c
+@@ -59,11 +59,17 @@
+ 
+ int pthread_key_delete(pthread_key_t key)
+ {
++#ifndef CONFIG_TLS_GLOBAL_KEYS
+   FAR struct task_info_s *info = task_get_info();
++#endif
+   FAR struct tls_info_s *tls = tls_get_info();
+   int ret = EINVAL;
+ 
++#ifndef CONFIG_TLS_GLOBAL_KEYS
+   DEBUGASSERT(info != NULL && tls != NULL);
++#else
++  DEBUGASSERT(tls != NULL);
++#endif
+   DEBUGASSERT(key >= 0 && key < CONFIG_TLS_NELEM);
+   if (key >= 0 && key < CONFIG_TLS_NELEM)
+     {
+@@ -71,6 +77,10 @@ int pthread_key_delete(pthread_key_t key)
+        * modification of the group TLS index set.
+        */
+ 
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++      ret = tls_global_key_delete(key);
++      tls->tl_elem[key] = 0;
++#else
+       ret = nxmutex_lock(&info->ta_lock);
+       if (ret == OK)
+         {
+@@ -82,6 +92,7 @@ int pthread_key_delete(pthread_key_t key)
+         {
+           ret = -ret;
+         }
++#endif
+     }
+ 
+   return ret;
+diff --git a/libs/libc/tls/Kconfig b/libs/libc/tls/Kconfig
+index 65627e2d49..89c7c2f5f5 100644
+--- a/libs/libc/tls/Kconfig
++++ b/libs/libc/tls/Kconfig
+@@ -55,6 +55,28 @@ config TLS_NELEM
+ 		NOTE that the special value of CONFIG_TLS_NELEM disables these
+ 		TLS interfaces.
+ 
++config TLS_GLOBAL_KEYS
++	bool "Share pthread TLS keys across task groups in flat builds"
++	depends on BUILD_FLAT && TLS_NELEM > 0
++	default n
++	---help---
++		Use one image-wide pthread key namespace and destructor table.
++		This is needed when a flat-linked runtime caches keys in static
++		storage and an application is launched in multiple task groups.
++		TLS values remain private to each thread. The configured key limit
++		then applies to the whole image rather than to each task group.
++
++config TLS_DTOR_ITERATIONS
++	int "Maximum pthread TLS destructor passes"
++	depends on TLS_NELEM > 0
++	default 1
++	range 1 16
++	---help---
++		Run up to this many passes of thread-specific destructors at
++		thread exit. A destructor may set another TLS value, including its
++		own key, for a later pass. Four passes support runtimes that defer
++		thread cleanup until earlier destructors have completed.
++
+ config TLS_TASK_NELEM
+ 	int "Number of Task Local Storage elements"
+ 	depends on !BUILD_KERNEL
+diff --git a/libs/libc/tls/tls_destruct.c b/libs/libc/tls/tls_destruct.c
+index d968d707cb..07fd94b1c8 100644
+--- a/libs/libc/tls/tls_destruct.c
++++ b/libs/libc/tls/tls_destruct.c
+@@ -27,6 +27,7 @@
+ #include <nuttx/config.h>
+ 
+ #include <assert.h>
++#include <stdbool.h>
+ 
+ #include <nuttx/tls.h>
+ 
+@@ -52,25 +53,49 @@
+ 
+ void tls_destruct(void)
+ {
++#ifndef CONFIG_TLS_GLOBAL_KEYS
+   FAR struct task_info_s *info = task_get_info();
++#endif
+   FAR struct tls_info_s *tls = tls_get_info();
+   FAR void *tls_elem_ptr = NULL;
+   tls_dtor_t destructor;
+   int candidate;
++  int pass;
++  bool invoked;
+ 
++#ifndef CONFIG_TLS_GLOBAL_KEYS
+   DEBUGASSERT(info != NULL);
++#endif
+ 
+-  for (candidate = CONFIG_TLS_NELEM - 1; candidate >= 0; candidate--)
++  for (pass = 0; pass < CONFIG_TLS_DTOR_ITERATIONS; pass++)
+     {
+-      /* Is this candidate index available? */
++      invoked = false;
++      for (candidate = CONFIG_TLS_NELEM - 1; candidate >= 0; candidate--)
++        {
++          tls_elem_ptr = (FAR void *)tls->tl_elem[candidate];
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++          destructor = tls_global_key_dtor(candidate);
++#else
++          destructor = info->ta_tlsdtor[candidate];
++#endif
++          if (tls_elem_ptr && destructor)
++            {
++              /* Keep no-destructor values available to later callbacks. */
++
++              tls->tl_elem[candidate] = 0;
++              destructor(tls_elem_ptr);
++              invoked = true;
++            }
++        }
+ 
+-      tls_elem_ptr = (FAR void *)tls->tl_elem[candidate];
+-      destructor = info->ta_tlsdtor[candidate];
+-      if (tls_elem_ptr && destructor)
++      if (!invoked)
+         {
+-          destructor(tls_elem_ptr);
++          break;
+         }
++    }
+ 
++  for (candidate = 0; candidate < CONFIG_TLS_NELEM; candidate++)
++    {
+       tls->tl_elem[candidate] = 0;
+     }
+ }

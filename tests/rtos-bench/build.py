@@ -107,6 +107,9 @@ def c_firmware(args, out):
         raise ValueError('initial standalone C firmware qualification supports the two ARM profiles only')
     revisions = {name: archive_submodule(name, out / directory)
                  for name, directory in [('nuttx', 'nuttx'), ('nuttx-apps', 'apps')]}
+    run(['python3', ROOT / 'tools/apply-nuttx-patches.py',
+         '--source', out / 'nuttx', '--revision', revisions['nuttx'],
+         '--record', out / 'nuttx-patches.json'])
     app = out / 'apps/examples/nxrs_bench'
     app.mkdir()
     if args.suite == 'posix':

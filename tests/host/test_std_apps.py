@@ -78,6 +78,7 @@ class StdApps(unittest.TestCase):
             ("ao-stress", ("--duration-ms", "0")),
             ("ao-stress", ("--work", "100001")),
             ("ao-stress", ("--scenario", "missing")),
+            ("ao-stress", ("--stack-report",)),
             ("ao-stress", ("--workers",)),
             ("ao-stress", ("--mystery", "1")),
         ]:

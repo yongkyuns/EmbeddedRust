@@ -4,6 +4,8 @@
 #[cfg(all(test, feature = "memory-probe"))]
 mod memory_qualification;
 mod stress;
+#[cfg(target_os = "nuttx")]
+mod target_memory;
 use std::process::ExitCode;
 use std::time::Duration;
 use stress::{Config, Scenario};
@@ -12,14 +14,19 @@ fn run() -> Result<(), String> {
     let mut config = Config::default();
     let mut scenario = "all".to_owned();
     let mut rounds = 1usize;
+    let mut stack_report = false;
     let mut args = std::env::args().skip(1);
     while let Some(flag) = args.next() {
         if flag == "--help" {
             if args.next().is_some() {
                 return Err("--help takes no other arguments".into());
             }
-            println!("usage: ao-stress [--scenario all|steady|burst|slow-consumer|cpu-load]\n  [--duration-ms 10..60000] [--rounds 1..100] [--producers 1..8]\n  [--workers 1..8] [--capacity 1..256] [--work 0..100000]\n  [--deadline-us 1..10000000] [--shutdown-ms 10..10000]");
+            println!("usage: ao-stress [--scenario all|steady|burst|slow-consumer|cpu-load]\n  [--duration-ms 10..60000] [--rounds 1..100] [--producers 1..8]\n  [--workers 1..8] [--capacity 1..256] [--work 0..100000]\n  [--deadline-us 1..10000000] [--shutdown-ms 10..10000] [--stack-report]");
             return Ok(());
+        }
+        if flag == "--stack-report" {
+            stack_report = true;
+            continue;
         }
         let value = args
             .next()
@@ -50,6 +57,10 @@ fn run() -> Result<(), String> {
         }
     }
     config.validate()?;
+    #[cfg(not(target_os = "nuttx"))]
+    if stack_report {
+        return Err("--stack-report requires a NuttX target with procfs stack coloration".into());
+    }
     if !(1..=100).contains(&rounds) {
         return Err("rounds must be in 1..=100".into());
     }
@@ -64,6 +75,14 @@ fn run() -> Result<(), String> {
     stress::transport_edges()?;
     for round in 1..=rounds {
         for &scenario in scenarios {
+            #[cfg(target_os = "nuttx")]
+            let report = if stack_report {
+                let mut observer = || target_memory::report_stacks(&config, scenario, round);
+                stress::run_observed(&config, scenario, &mut observer)?
+            } else {
+                stress::run(&config, scenario)?
+            };
+            #[cfg(not(target_os = "nuttx"))]
             let report = stress::run(&config, scenario)?;
             report.print(&config, scenario, round);
         }

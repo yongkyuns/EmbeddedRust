@@ -22,19 +22,40 @@ on:
       - 'external/nuttx'
       - 'external/nuttx-apps'
       - '.github/workflows/std-apps-self-hosted.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'service/**'
+      - 'hal/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.cargo/config.toml'
+      - 'platform/firmware/**'
+      - 'platform/nuttx/**'
+      - 'tools/build-nuttx-std-app.sh'
+      - 'tools/check-architecture.py'
+      - 'tools/check-deployment.py'
+      - 'tests/host/**'
+      - 'tests/portable/**'
+      - 'tests/native/**'
+      - 'tests/nuttx-std/**'
+      - 'external/nuttx'
+      - 'external/nuttx-apps'
+      - '.github/workflows/std-apps-self-hosted.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: std-apps-${{ github.ref }}
+  group: std-apps-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   host:
-    if: github.repository == 'yongkyuns/nxrs' && github.actor == 'yongkyuns'
-    runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
+    if: github.repository == 'yongkyuns/EmbeddedRust' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, EmbeddedRust, nuttx, isolated]
     timeout-minutes: 15
     permissions:
       contents: read
@@ -70,6 +91,7 @@ jobs:
           cargo +1.90.0 clippy --locked -p nxrs-std-demo -p nxrs-ao-stress --all-targets -- -D warnings
           cargo +1.90.0 build --locked -p nxrs-std-demo -p nxrs-ao-stress
           python3 -m unittest discover -s tests/host -p test_std_apps.py -v
+          python3 -m unittest discover -s tests/host -p test_nuttx_memory.py -v
       - name: Qualify workspace and native regressions
         shell: bash
         run: |
@@ -176,12 +198,12 @@ jobs:
 
   arm-firmware:
     needs: host
-    if: github.repository == 'yongkyuns/nxrs' && github.actor == 'yongkyuns'
+    if: github.repository == 'yongkyuns/EmbeddedRust' && github.actor == 'yongkyuns'
     strategy:
       fail-fast: false
       matrix:
         app: [std-demo, ao-stress]
-    runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
+    runs-on: [self-hosted, Linux, X64, EmbeddedRust, nuttx, isolated]
     timeout-minutes: 35
     steps:
       - name: Verify isolated Linux runner
@@ -217,9 +239,14 @@ jobs:
           APP: ${{ matrix.app }}
         run: |
           set -euo pipefail
+          python3 tests/nuttx-std/test-patches.py
           for platform in mps2-an521-mock pico2-mock; do
             mkdir -p "target/firmware/$APP/$platform"
-            cargo +1.90.0 firmware --app "$APP" --platform "$platform" 2>&1 | tee "target/firmware/$APP/$platform/build.log"
+            if test "$platform" = mps2-an521-mock; then
+              NXRS_NUTTX_DIAGNOSTIC_UNWIND=1 cargo +1.90.0 firmware --app "$APP" --platform "$platform" 2>&1 | tee "target/firmware/$APP/$platform/build.log"
+            else
+              cargo +1.90.0 firmware --app "$APP" --platform "$platform" 2>&1 | tee "target/firmware/$APP/$platform/build.log"
+            fi
           done
       - name: Execute twice on NuttX and verify actual output
         shell: bash
