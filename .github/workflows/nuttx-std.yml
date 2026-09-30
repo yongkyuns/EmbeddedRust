@@ -1,0 +1,96 @@
+name: NuttX ordinary Rust std
+on:
+  pull_request:
+    paths:
+      - 'tests/nuttx-std/**'
+      - 'tests/browser-threads/src/main.rs'
+      - 'tests/browser-threads/Cargo.toml'
+      - '.github/workflows/nuttx-std.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'external/nuttx'
+      - 'external/nuttx-apps'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nuttx-std-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NUTTX_STD_COMPAT_FIXES: "1"
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          submodules: true
+      - name: Install isolated toolchain and NuttX tools
+        run: |
+          rustup toolchain install nightly-2025-09-15 --profile minimal --component rust-src
+          sudo apt-get update
+          sudo apt-get install -y gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf qemu-system-misc gdb-multiarch bison flex gperf kconfig-frontends genromfs libncurses-dev
+          python3 -m pip install --break-system-packages kconfiglib==14.1.0
+      - name: Check host oracle and integration syntax
+        run: |
+          python3 tests/nuttx-std/run.py --self-test
+          python3 tests/nuttx-std/prepare-std.py --self-test
+          python3 tests/nuttx-std/check-abi.py --self-test
+          python3 -m py_compile tests/nuttx-std/run.py tests/nuttx-std/link.py tests/nuttx-std/prepare-std.py tests/nuttx-std/check-abi.py
+          python3 tests/nuttx-std/run-resources.py --self-test
+          python3 -m py_compile tests/nuttx-std/run-resources.py
+          cc -std=c11 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Werror -fsyntax-only tests/nuttx-std/resources/nuttx/fd_setup.c
+          bash -n tests/nuttx-std/build.sh
+      - name: Build shared ordinary Rust binary into pinned NuttX
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p target/nuttx-std
+          bash tests/nuttx-std/build.sh 2>&1 | tee target/nuttx-std/build.log
+      - name: Execute three fresh kernels and deliberate failure
+        run: python3 tests/nuttx-std/run.py --image target/nuttx-std/nuttx/nuttx
+      - name: Build separate finite-resource qualification image
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p target/nuttx-resources
+          bash tests/nuttx-std/build.sh resources 2>&1 | tee target/nuttx-resources/build.log
+      - name: Execute resource recovery and all closed-fd combinations
+        run: python3 tests/nuttx-std/run-resources.py --image target/nuttx-resources/nuttx/nuttx
+      - name: Retain kernel, link evidence and transcripts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuttx-std-qualification
+          path: |
+            target/nuttx-std/*.txt
+            target/nuttx-std/*.log
+            target/nuttx-std/*.json
+            target/nuttx-std/*.jsonl
+            target/nuttx-std/*.patch
+            target/nuttx-std/*.config
+            target/nuttx-std/*.sha256
+            target/nuttx-std/abi-*
+            target/nuttx-std/nuttx/nuttx
+            target/nuttx-std/nuttx/nuttx.map
+          if-no-files-found: warn
+      - name: Retain resource and descriptor evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuttx-resource-qualification
+          path: |
+            target/nuttx-resources/*.txt
+            target/nuttx-resources/*.log
+            target/nuttx-resources/*.json
+            target/nuttx-resources/*.jsonl
+            target/nuttx-resources/*.patch
+            target/nuttx-resources/*.config
+            target/nuttx-resources/*.sha256
+            target/nuttx-resources/abi-*
+            target/nuttx-resources/nuttx/nuttx
+            target/nuttx-resources/nuttx/nuttx.map
+          if-no-files-found: warn

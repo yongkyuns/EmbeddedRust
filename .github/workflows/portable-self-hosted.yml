@@ -1,0 +1,97 @@
+name: Portable qualification (trusted self-hosted)
+
+on:
+  push:
+    branches:
+      - 'refactor/**'
+    paths:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'app/nxrs/**'
+      - 'hal/**'
+      - 'tests/portable/**'
+      - 'tests/native/**'
+      - 'tests/host/**'
+      - 'tools/check-architecture.py'
+      - 'tools/check-deployment.py'
+      - '.github/workflows/portable-self-hosted.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portable-self-hosted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualify:
+    if: github.repository == 'yongkyuns/EmbeddedRust' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
+    timeout-minutes: 20
+    steps:
+      - name: Verify isolated Linux runner
+        run: |
+          set -eu
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          ! mount | grep -F '/Users/' >/dev/null
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Install pinned Rust targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs               | sh -s -- -y --profile minimal --default-toolchain none
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustup toolchain install 1.90.0 --profile minimal --component clippy
+          rustup target add --toolchain 1.90.0 thumbv6m-none-eabi wasm32-unknown-unknown
+
+      - name: Enforce architecture and deployment boundaries
+        run: |
+          python3 -m unittest discover -s tests/host -p test_architecture.py -v
+          python3 -m unittest discover -s tests/host -p test_deployment.py -v
+          python3 tools/check-architecture.py
+          python3 tools/check-deployment.py \
+            --app-manifest app/nxrs/Cargo.toml \
+            --hal-feature nxrs-camera/native \
+            --hal-feature nxrs-storage/native \
+            --hal-feature nxrs-transport/native \
+            --execution-platform linux
+
+      - name: Run portable/native qualification
+        run: |
+          # Exact-head gate for the app -> HAL platform provider-boundary migration.
+          cargo +1.90.0 test --locked
+          cargo +1.90.0 test --locked -p nxrs-applications \
+            --features nxrs-applications/cli,nxrs-camera/native,nxrs-storage/native,nxrs-transport/native \
+            --bin nxrs
+          cargo +1.90.0 run --locked -p nxrs-simulator --bin nxrs-simulator
+          python3 tests/host/test-native-runner.py
+
+      - name: Qualify isolated storage ownership and bytes
+        run: |
+          python3 -m unittest discover -s tests/host -p test_storage_isolation.py -v
+          rm -rf target/storage-isolation
+          python3 tools/check-storage-isolation.py
+
+      - name: Compile no-std and wasm profiles
+        run: |
+          cargo +1.90.0 check --locked -p nxrs-applications --no-default-features --lib --target thumbv6m-none-eabi
+          cargo +1.90.0 build --locked --release --lib -p nxrs-simulator --target wasm32-unknown-unknown
+
+      - name: Lint capability APIs, providers and app
+        run: |
+          cargo +1.90.0 clippy --locked \
+            -p nxrs-camera-api -p nxrs-storage-api -p nxrs-transport-api \
+            -p nxrs-camera-native -p nxrs-storage-native -p nxrs-transport-native \
+            -p nxrs-camera-mock -p nxrs-storage-mock -p nxrs-transport-mock \
+            -p nxrs-camera -p nxrs-storage -p nxrs-transport \
+            -p nxrs-services -p nxrs-applications \
+            --features nxrs-applications/cli,nxrs-camera/native,nxrs-storage/native,nxrs-transport/native --lib --bins -- -D warnings

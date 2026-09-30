@@ -1,0 +1,17 @@
+[package]
+name = "nxrs-event-demo"
+version.workspace = true
+edition.workspace = true
+
+[package.metadata.nxrs.firmware]
+bin = "event-demo"
+command = "event_demo"
+priority = 100
+stack-size = 65536
+
+[dependencies]
+nxrs-navigation-services = { path = "../../service/navigation" }
+
+[[bin]]
+name = "event-demo"
+path = "src/main.rs"

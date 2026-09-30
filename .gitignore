@@ -1,0 +1,9 @@
+/target
+/node_modules
+__pycache__/
+*.py[cod]
+
+# Legacy NuttX build artifacts
+legacy/platform/nuttx/.built
+legacy/platform/nuttx/.depend
+legacy/platform/nuttx/Make.dep

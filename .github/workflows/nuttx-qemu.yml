@@ -1,0 +1,69 @@
+name: ESP32-S3 QEMU
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nuttx-qemu-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUSTUP_TOOLCHAIN: 1.90.0
+
+jobs:
+  esp32s3:
+    name: Xtensa firmware execution (qualification)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.90.0
+      - name: Install build and emulator dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bison flex gperf kconfig-frontends genromfs libncurses-dev zlib1g-dev libgcrypt20 libglib2.0-0 libpixman-1-0 libsdl2-2.0-0 libslirp0
+          python3 -m venv target/qemu-venv
+          target/qemu-venv/bin/pip install kconfiglib==14.1.0 esptool==4.8.1
+          echo "$GITHUB_WORKSPACE/target/qemu-venv/bin" >> "$GITHUB_PATH"
+      - uses: actions/cache@v4
+        with:
+          path: target/qemu-tools/*.tar.xz
+          key: qemu-linux-x64-9.0.0-20240606-gcc14.2-20241119-rust1.90.0.0-v1
+      - name: Install and verify pinned compiler and QEMU archives
+        run: bash tools/install-qemu-tools.sh
+      - name: Build the ESP32-S3 firmware and verify target linkage
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p target/nuttx-qemu
+          bash tools/build-nuttx-qemu.sh 2>&1 | tee target/nuttx-qemu/build.log
+      - name: Run shared NuttX behavior, ABI and preemption assertions
+        shell: bash
+        run: |
+          source target/qemu-tools/environment.sh
+          python3 tests/host/test-nuttx-sim.py "$(command -v qemu-system-xtensa)" --qemu-image target/nuttx-qemu/nuttx/nuttx.merged.bin --log target/nuttx-qemu/console.log --cycles 1 --require-std-main
+      - name: Retain firmware, provenance, linkage and execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuttx-esp32s3-qemu-qualification
+          path: |
+            target/nuttx-qemu/nuttx/nuttx
+            target/nuttx-qemu/nuttx/nuttx.merged.bin
+            target/nuttx-qemu/nuttx/nuttx.map
+            target/nuttx-qemu/*.txt
+            target/nuttx-qemu/*.config
+            target/nuttx-qemu/*.sha256
+            target/nuttx-qemu/*.log
+            target/nuttx-qemu/harness-source.tar

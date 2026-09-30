@@ -1,0 +1,11 @@
+[package]
+name = "nxrs-gnss-mock"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+nxrs-gnss-api = { path = "../api" }
+
+[package.metadata.nxrs]
+mode = "synthetic-demo"
+platforms = ["std"]

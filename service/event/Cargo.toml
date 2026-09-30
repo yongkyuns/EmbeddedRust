@@ -1,0 +1,4 @@
+[package]
+name = "nxrs-service-event"
+version.workspace = true
+edition.workspace = true

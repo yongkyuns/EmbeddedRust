@@ -1,0 +1,5 @@
+[env]
+NUTTX_INCLUDE_DIR = { value = "external/nuttx/include", relative = true }
+
+[alias]
+firmware = "run --quiet --locked -p nxrs-firmware --"

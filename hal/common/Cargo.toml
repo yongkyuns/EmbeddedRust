@@ -1,0 +1,10 @@
+[package]
+name = "nxrs-hal-common"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+
+[package.metadata.nxrs]
+mode = "portable"
+platforms = ["core", "std"]

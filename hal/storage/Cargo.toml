@@ -1,0 +1,20 @@
+[package]
+name = "nxrs-storage"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+mock = ["dep:nxrs-storage-mock"]
+native = ["dep:nxrs-storage-native"]
+nuttx = ["dep:nxrs-storage-nuttx"]
+
+[dependencies]
+nxrs-storage-api = { path = "api" }
+nxrs-storage-mock = { path = "mock", optional = true }
+nxrs-storage-native = { path = "native", optional = true }
+nxrs-storage-nuttx = { path = "nuttx", optional = true }
+
+[package.metadata.nxrs]
+kind = "hal-capability"
+provider-features = ["mock", "native", "nuttx"]

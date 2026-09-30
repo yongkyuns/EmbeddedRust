@@ -1,0 +1,38 @@
+board = "esp32s3-devkit:nsh"
+target = "xtensa-esp32s3-nuttx"
+crossdev = "xtensa-esp32s3-elf-"
+machine = "Tensilica Xtensa Processor"
+image = "nuttx.merged.bin"
+hal-features = ["nxrs-imu/mock", "nxrs-gnss/mock"]
+
+[kconfig]
+enable = [
+  "ESP32S3_QEMU_IMAGE",
+  "DEBUG_FEATURES",
+  "DEBUG_ASSERTIONS",
+  "DEBUG_SYMBOLS",
+  "DEBUG_LINK_MAP",
+  "STACK_COLORATION",
+]
+disable = [
+  "NET",
+  "SMP",
+  "DISABLE_PTHREAD",
+  "NSH_NETINIT",
+  "NETUTILS_NETINIT",
+  "NET_USRSOCK",
+  "NET_ETHERNET",
+  "ESP32S3_WIFI",
+  "ESP32S3_BLE",
+  "ESP32S3_SPIRAM",
+]
+set = ["PTHREAD_STACK_DEFAULT=16384", "ARCH_INTERRUPTSTACK=4096"]
+require = [
+  "CONFIG_ARCH_XTENSA=y",
+  "CONFIG_ARCH_CHIP_ESP32S3=y",
+  "CONFIG_ESP32S3_QEMU_IMAGE=y",
+  "CONFIG_ESPRESSIF_SIMPLE_BOOT=y",
+  "CONFIG_PTHREAD_STACK_DEFAULT=16384",
+  "CONFIG_ARCH_INTERRUPTSTACK=4096",
+]
+forbid-regex = "^CONFIG_(NET|SMP|DISABLE_PTHREAD|NET_USRSOCK|NET_ETHERNET|NSH_NETINIT|NETUTILS_NETINIT|ESP32S3_WIFI|ESP32S3_BLE|ESP32S3_SPIRAM)=y$"

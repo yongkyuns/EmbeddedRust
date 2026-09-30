@@ -1,0 +1,16 @@
+[package]
+name = "nxrs-gnss"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+mock = ["dep:nxrs-gnss-mock"]
+
+[dependencies]
+nxrs-gnss-api = { path = "api" }
+nxrs-gnss-mock = { path = "mock", optional = true }
+
+[package.metadata.nxrs]
+kind = "hal-capability"
+provider-features = ["mock"]

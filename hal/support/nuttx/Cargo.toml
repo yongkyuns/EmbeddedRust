@@ -1,0 +1,11 @@
+[package]
+name = "nxrs-nuttx-support"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+nxrs-hal-common = { path = "../../common" }
+
+[package.metadata.nxrs]
+mode = "descriptor-support"
+platforms = ["nuttx", "core-only-fixture"]

@@ -1,0 +1,242 @@
+name: Std recipes and active-object stress (trusted self-hosted)
+
+on:
+  push:
+    branches: [main, 'apps/**']
+    paths:
+      - 'app/**'
+      - 'service/**'
+      - 'hal/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.cargo/config.toml'
+      - 'platform/firmware/**'
+      - 'platform/nuttx/**'
+      - 'tools/build-nuttx-std-app.sh'
+      - 'tools/check-architecture.py'
+      - 'tools/check-deployment.py'
+      - 'tests/host/**'
+      - 'tests/portable/**'
+      - 'tests/native/**'
+      - 'tests/nuttx-std/**'
+      - 'external/nuttx'
+      - 'external/nuttx-apps'
+      - '.github/workflows/std-apps-self-hosted.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: std-apps-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host:
+    if: github.repository == 'yongkyuns/nxrs' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      checks: read
+    steps:
+      - name: Verify isolated Linux runner
+        run: |
+          set -eu
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          ! mount | grep -F '/Users/' >/dev/null
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Install pinned Rust
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.cargo/bin:$PATH"
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          rustup toolchain install 1.90.0 --profile minimal --component clippy --component rustfmt
+          rustup target add --toolchain 1.90.0 thumbv6m-none-eabi wasm32-unknown-unknown
+      - name: Test and lint both ordinary binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo +1.90.0 fmt --check -p nxrs-std-demo -p nxrs-ao-stress
+          cargo +1.90.0 test --locked -p nxrs-std-demo -p nxrs-ao-stress
+          cargo +1.90.0 clippy --locked -p nxrs-std-demo -p nxrs-ao-stress --all-targets -- -D warnings
+          cargo +1.90.0 build --locked -p nxrs-std-demo -p nxrs-ao-stress
+          python3 -m unittest discover -s tests/host -p test_std_apps.py -v
+      - name: Qualify workspace and native regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Adding default workspace members must also preserve existing apps.
+          cargo +1.90.0 test --locked
+          cargo +1.90.0 test --locked -p nxrs-firmware
+          python3 -m unittest discover -s tests/host -p test_architecture.py -v
+          python3 -m unittest discover -s tests/host -p test_deployment.py -v
+          python3 -m unittest discover -s tests/host -p test_platform_profiles.py -v
+          python3 tools/check-architecture.py
+          cargo +1.90.0 test --locked -p nxrs-applications \
+            --features nxrs-applications/cli,nxrs-camera/native,nxrs-storage/native,nxrs-transport/native --bin nxrs
+          cargo +1.90.0 run --locked -p nxrs-simulator --bin nxrs-simulator
+          python3 tests/host/test-native-runner.py
+          cargo +1.90.0 clippy --locked \
+            -p nxrs-camera -p nxrs-storage -p nxrs-transport \
+            -p nxrs-camera-api -p nxrs-storage-api -p nxrs-transport-api \
+            -p nxrs-camera-native -p nxrs-storage-native -p nxrs-transport-native \
+            -p nxrs-services -p nxrs-applications \
+            --features nxrs-applications/cli,nxrs-camera/native,nxrs-storage/native,nxrs-transport/native --lib --bins -- -D warnings
+          cargo +1.90.0 check --locked -p nxrs-applications --no-default-features --lib --target thumbv6m-none-eabi
+          cargo +1.90.0 build --locked --release --lib -p nxrs-simulator --target wasm32-unknown-unknown
+      - name: Check firmware discovery and app isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo +1.90.0 firmware --list-apps | tee /tmp/nxrs-std-apps.txt
+          grep -x std-demo /tmp/nxrs-std-apps.txt
+          grep -x ao-stress /tmp/nxrs-std-apps.txt
+          for app in std-demo ao-stress; do
+            for platform in pico2-mock mps2-an521-mock esp32s3-qemu-mock; do
+              cargo +1.90.0 firmware --app "$app" --platform "$platform" --dry-run
+            done
+            cargo +1.90.0 tree --locked -p "nxrs-$app" > "/tmp/$app-tree.txt"
+            ! grep -E 'nxrs-(imu|gnss|camera|storage|transport)' "/tmp/$app-tree.txt"
+          done
+      - name: Record release behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p target/std-apps
+          cargo +1.90.0 run --locked --release -p nxrs-std-demo --bin std-demo | tee target/std-apps/std-demo.log
+          cargo +1.90.0 run --locked --release -p nxrs-ao-stress --bin ao-stress -- --duration-ms 1000 --rounds 2 | tee target/std-apps/ao-stress.log
+      - name: Record CI failure annotations without changing check results
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import urllib.request
+
+          # Read only this repository's check results. No admin/billing access,
+          # no status writes, and no false green replacements for other jobs.
+          base = os.environ['GITHUB_API_URL'] + '/repos/' + os.environ['GITHUB_REPOSITORY']
+          headers = {'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+                     'Accept': 'application/vnd.github+json',
+                     'X-GitHub-Api-Version': '2022-11-28'}
+          def get(path):
+              request = urllib.request.Request(base + path, headers=headers)
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  return json.load(response)
+
+          rows = []
+          for page in range(1, 21):
+              checks = get('/commits/' + os.environ['GITHUB_SHA'] +
+                           '/check-runs?filter=latest&per_page=100&page=' + str(page))['check_runs']
+              for check in checks:
+                  if check['conclusion'] not in ('failure', 'timed_out', 'action_required'):
+                      continue
+                  annotations = []
+                  for annotation_page in range(1, 21):
+                      items = get('/check-runs/' + str(check['id']) +
+                                  '/annotations?per_page=100&page=' + str(annotation_page))
+                      annotations.extend({k: item.get(k) for k in
+                          ('annotation_level', 'title', 'message', 'path', 'start_line')} for item in items)
+                      if len(items) < 100:
+                          break
+                  else:
+                      raise RuntimeError('annotation pagination exceeded safety limit')
+                  rows.append({'id': check['id'], 'name': check['name'],
+                      'conclusion': check['conclusion'], 'url': check['html_url'],
+                      'summary': check['output'].get('summary'), 'annotations': annotations})
+              if len(checks) < 100:
+                  break
+          else:
+              raise RuntimeError('check pagination exceeded safety limit')
+          output = Path('target/std-apps/ci-failures.json')
+          output.parent.mkdir(parents=True, exist_ok=True)
+          output.write_text(json.dumps({'head': os.environ['GITHUB_SHA'], 'checks': rows}, indent=2) + '\n')
+          print(output.read_text())
+          PY
+      - name: Retain native evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: std-apps-host
+          path: target/std-apps/
+          if-no-files-found: warn
+
+  arm-firmware:
+    needs: host
+    if: github.repository == 'yongkyuns/nxrs' && github.actor == 'yongkyuns'
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [std-demo, ao-stress]
+    runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
+    timeout-minutes: 35
+    steps:
+      - name: Verify isolated Linux runner
+        run: |
+          set -eu
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          ! mount | grep -F '/Users/' >/dev/null
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          submodules: true
+          persist-credentials: false
+      - name: Install ARM prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi qemu-system-arm bison flex gperf kconfig-frontends genromfs libncurses-dev python3 python3-venv curl build-essential
+          export PATH="$HOME/.cargo/bin:$PATH"
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          rustup toolchain install 1.90.0 --profile minimal
+          rustup toolchain install nightly-2025-09-15 --profile minimal --component rust-src
+          python3 -m venv target/std-apps-arm-venv
+          target/std-apps-arm-venv/bin/pip install kconfiglib==14.1.0
+          echo "$GITHUB_WORKSPACE/target/std-apps-arm-venv/bin" >> "$GITHUB_PATH"
+      - name: Build real Pico 2 and Cortex-M33 QEMU firmware
+        shell: bash
+        env:
+          APP: ${{ matrix.app }}
+        run: |
+          set -euo pipefail
+          for platform in mps2-an521-mock pico2-mock; do
+            mkdir -p "target/firmware/$APP/$platform"
+            cargo +1.90.0 firmware --app "$APP" --platform "$platform" 2>&1 | tee "target/firmware/$APP/$platform/build.log"
+          done
+      - name: Execute twice on NuttX and verify actual output
+        shell: bash
+        env:
+          APP: ${{ matrix.app }}
+        run: |
+          python3 tests/host/run-std-apps-nuttx.py --qemu "$(command -v qemu-system-arm)" --app "$APP" --image "target/firmware/$APP/mps2-an521-mock/nuttx/nuttx" --log "target/firmware/$APP/mps2-an521-mock/console.log"
+      - name: Retain firmware qualification
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: std-apps-arm-${{ matrix.app }}
+          path: |
+            target/firmware/${{ matrix.app }}/*/*.log
+            target/firmware/${{ matrix.app }}/*/*.json
+            target/firmware/${{ matrix.app }}/*/*.config
+            target/firmware/${{ matrix.app }}/*/nuttx/nuttx
+            target/firmware/${{ matrix.app }}/*/nuttx/nuttx.uf2
+            target/firmware/${{ matrix.app }}/*/nuttx/nuttx.bin
+          if-no-files-found: warn

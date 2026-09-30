@@ -1,0 +1,20 @@
+[package]
+name = "nxrs-camera"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+mock = ["dep:nxrs-camera-mock"]
+native = ["dep:nxrs-camera-native"]
+nuttx = ["dep:nxrs-camera-nuttx"]
+
+[dependencies]
+nxrs-camera-api = { path = "api" }
+nxrs-camera-mock = { path = "mock", optional = true }
+nxrs-camera-native = { path = "native", optional = true }
+nxrs-camera-nuttx = { path = "nuttx", optional = true }
+
+[package.metadata.nxrs]
+kind = "hal-capability"
+provider-features = ["mock", "native", "nuttx"]

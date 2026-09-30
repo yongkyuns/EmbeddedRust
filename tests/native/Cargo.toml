@@ -1,0 +1,14 @@
+[package]
+name = "nxrs-native-integration"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+nxrs-applications = { path = "../../app/nxrs" }
+nxrs-services = { path = "../../service" }
+nxrs-camera-api = { path = "../../hal/camera/api" }
+nxrs-storage-api = { path = "../../hal/storage/api" }
+nxrs-transport-api = { path = "../../hal/transport/api" }
+nxrs-camera-native = { path = "../../hal/camera/native" }
+nxrs-storage-native = { path = "../../hal/storage/native" }
+nxrs-transport-native = { path = "../../hal/transport/native" }

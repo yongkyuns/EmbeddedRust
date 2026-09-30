@@ -1,0 +1,4 @@
+config EXAMPLES_NXRS_STD
+	bool "Nxrs ordinary Rust main/std qualification"
+	default n
+	depends on BUILD_FLAT && !DISABLE_PTHREAD

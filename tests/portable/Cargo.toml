@@ -1,0 +1,15 @@
+[package]
+name = "nxrs-simulator"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+nxrs-camera-api = { path = "../../hal/camera/api" }
+nxrs-camera-mock = { path = "../../hal/camera/mock" }
+nxrs-storage-mock = { path = "../../hal/storage/mock" }
+nxrs-transport-mock = { path = "../../hal/transport/mock" }
+nxrs-services = { path = "../../service" }
+nxrs-applications = { path = "../../app/nxrs" }

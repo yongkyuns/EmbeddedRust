@@ -1,0 +1,7 @@
+[package]
+name = "nxrs-browser-threads"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+# Qualification binary only. No application, HAL, executor, or FFI dependency.

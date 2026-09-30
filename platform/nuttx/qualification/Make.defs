@@ -1,0 +1,3 @@
+ifneq ($(CONFIG_EXAMPLES_NXRS_SIM),)
+CONFIGURED_APPS += $(APPDIR)/examples/nxrs_sim
+endif

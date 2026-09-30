@@ -1,0 +1,106 @@
+name: Browser Rust std threads
+
+on:
+  pull_request:
+    paths:
+      - 'tests/browser-threads/**'
+      - '.github/workflows/browser-threads.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-threads-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  BROWSER_STD_TLS_FIX: "1"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - name: Install isolated qualification toolchains
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal --component rustfmt
+          rustup toolchain install nightly-2026-09-25 --profile minimal --component rust-src
+      - name: Check probe formatting and oracle negative controls
+        run: |
+          cargo +1.90.0 fmt --check -p nxrs-browser-threads
+          python3 tests/browser-threads/run.py --self-test
+          python3 tests/browser-threads/prepare-std.py --self-test
+      - name: Execute identical source natively
+        shell: bash
+        run: |
+          timeout 30 cargo +1.90.0 run --locked --release -p nxrs-browser-threads
+          set +e
+          timeout 30 cargo +1.90.0 run --locked --release -p nxrs-browser-threads -- fail
+          result=$?
+          set -e
+          test "$result" -eq 7
+      - uses: actions/checkout@v4
+        with:
+          repository: emscripten-core/emsdk
+          ref: 389a68bc35dcff7ebae4614e1615099dafda00d1
+          path: target/browser-threads/emsdk
+      - name: Build matched pthread std and ordinary main
+        shell: bash
+        run: |
+          SDK="$PWD/target/browser-threads/emsdk"
+          "$SDK/emsdk" install 4.0.15
+          "$SDK/emsdk" activate 4.0.15
+          source "$SDK/emsdk_env.sh"
+          bash tests/browser-threads/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pthread-probe
+          path: target/browser-threads/site
+          if-no-files-found: error
+
+  browsers:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chrome
+            os: ubuntu-24.04
+          - browser: safari
+            os: macos-15
+    name: Actual ${{ matrix.browser }} std thread execution
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: pthread-probe
+          path: target/browser-threads/site
+      - name: Enable Safari automation
+        if: matrix.browser == 'safari'
+        run: sudo safaridriver --enable
+      - name: Run real browser and negative controls
+        run: >-
+          python3 tests/browser-threads/run.py
+          --browser ${{ matrix.browser }}
+          --site target/browser-threads/site
+          --expected-source "$SOURCE_SHA"
+          --output target/browser-threads/${{ matrix.browser }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pthread-${{ matrix.browser }}-results
+          path: |
+            target/browser-threads/${{ matrix.browser }}.json
+            target/browser-threads/${{ matrix.browser }}.driver.log
+          if-no-files-found: warn

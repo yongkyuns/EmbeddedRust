@@ -1,0 +1,71 @@
+name: NuttX std UDP
+on:
+  pull_request:
+    paths:
+      - 'tests/nuttx-std/**'
+      - 'hal/transport/api/**'
+      - 'hal/transport/nuttx/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'external/nuttx'
+      - 'external/nuttx-apps'
+      - '.github/workflows/nuttx-udp.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nuttx-udp-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NUTTX_STD_COMPAT_FIXES: "1"
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          submodules: true
+      - name: Install pinned tools
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          rustup toolchain install nightly-2025-09-15 --profile minimal --component rust-src
+          sudo apt-get update
+          sudo apt-get install -y gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf qemu-system-misc gdb-multiarch bison flex gperf kconfig-frontends genromfs libncurses-dev
+          python3 -m pip install --break-system-packages kconfiglib==14.1.0
+      - name: Host rejection controls and native std execution
+        run: |
+          python3 tests/nuttx-std/udp/check-abi.py --self-test
+          python3 tests/nuttx-std/udp/run.py --self-test
+          bash -n tests/nuttx-std/build.sh
+          cargo +1.90.0 build --locked -p nxrs-std-udp
+          python3 tests/nuttx-std/udp/run.py --native target/debug/nxrs-std-udp --output target/udp-native
+      - name: Build ordinary binary and reject incompatible socket ABI before boot
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p target/nuttx-udp
+          bash tests/nuttx-std/build.sh udp 2>&1 | tee target/nuttx-udp/build.log
+      - name: Execute three fresh kernels and deliberate failure
+        run: python3 tests/nuttx-std/udp/run.py --image target/nuttx-udp/nuttx/nuttx
+      - name: Retain ABI, image and execution evidence, including failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuttx-std-udp-qualification
+          path: |
+            target/udp-native/*.log
+            target/nuttx-udp/*.txt
+            target/nuttx-udp/*.log
+            target/nuttx-udp/*.json
+            target/nuttx-udp/*.jsonl
+            target/nuttx-udp/*.patch
+            target/nuttx-udp/*.config
+            target/nuttx-udp/*.sha256
+            target/nuttx-udp/abi-*
+            target/nuttx-udp/socket-*
+            target/nuttx-udp/nuttx/nuttx
+            target/nuttx-udp/nuttx/nuttx.map
+          if-no-files-found: warn

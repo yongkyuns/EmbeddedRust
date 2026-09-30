@@ -1,0 +1,68 @@
+name: NuttX simulator (trusted self-hosted)
+
+on:
+  push:
+    branches:
+      - 'refactor/**'
+    paths:
+      - 'hal/camera/nuttx/**'
+      - 'hal/storage/nuttx/**'
+      - 'hal/support/nuttx/**'
+      - 'tests/nuttx/**'
+      - 'platform/nuttx/qualification/**'
+      - 'platform/nuttx/profiles/sim.sh'
+      - 'tools/build-nuttx-sim.sh'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'external/nuttx'
+      - 'external/nuttx-apps'
+      - '.github/workflows/nuttx-sim-self-hosted.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nuttx-sim-self-hosted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    if: github.repository == 'yongkyuns/nxrs' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
+    timeout-minutes: 20
+    steps:
+      - name: Verify isolated Linux runner
+        run: |
+          set -eu
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          ! mount | grep -F '/Users/' >/dev/null
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          submodules: true
+          persist-credentials: false
+
+      - name: Install NuttX simulator dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends bison flex gperf kconfig-frontends genromfs libncurses-dev zlib1g-dev build-essential python3-pip
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustup toolchain install 1.90.0 --profile minimal --component rust-src
+          rustup target add --toolchain 1.90.0 x86_64-unknown-none
+          python3 -m pip install --break-system-packages kconfiglib==14.1.0
+
+      - name: Build core-only compatibility fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p target/nuttx-sim
+          bash tools/build-nuttx-sim.sh 2>&1 | tee target/nuttx-sim/build.log
+
+      - name: Execute twice and verify disk/UDP/ABI behavior
+        run: python3 tests/host/test-nuttx-sim.py target/nuttx-sim/nuttx/nuttx
