@@ -1,0 +1,17 @@
+...@material.d2
+# Representative device-class call path, not a universal framework mandate.
+direction: down
+app: "Application" { class: application }
+framework: "OpenVela subsystem\nAPI + implementation (optional)" { class: implementation }
+api: "Device access\nopen / read / poll + class-specific ioctl" { class: contract }
+upper: "Generic NuttX upper half\ncommon device behavior" { class: implementation }
+lower: "Device-specific lower half\nchip operations + register protocol" { class: adaptation }
+bus: "Bus / SoC drivers + board setup\ncontroller, pins, IRQs, registration" { class: adaptation }
+hardware: "Physical hardware" { class: hardware }
+app -> framework: uses
+framework -> api
+app -> api: direct device client { style.stroke-dash: 4 }
+api -> upper: NuttX device-class contract
+upper -> lower: lower-half operations
+lower -> bus: I2C / SPI operations
+bus -> hardware

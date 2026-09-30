@@ -1,0 +1,19 @@
+...@material.d2
+# Conceptual use path. The facade and API are separate crates in source.
+# Dashed branches are alternative build selections, not runtime dispatch.
+direction: down
+app: "Portable app / service\ncomposition + product policy" { class: application }
+facade: "Capability facade + public contract\nnxrs-camera / Camera (example)" { class: contract }
+nuttx: "NuttX camera provider\nRust ownership + target C bridge" { class: adaptation }
+native: "Native camera provider\nreplay implementation" { class: implementation }
+mock: "Mock camera provider\nscripted implementation" { class: implementation }
+device: "NuttX device + matching driver\nread-device contract, not V4L2" { class: hardware }
+files: "Recorded frames\nhost files" { class: hardware }
+script: "Scripted frames / errors\nno physical hardware" { class: hardware }
+app -> facade: uses capability, not provider identity
+facade -> nuttx: build alternative { style.stroke-dash: 4 }
+facade -> native: build alternative { style.stroke-dash: 4 }
+facade -> mock: build alternative { style.stroke-dash: 4 }
+nuttx -> device: OS / device-specific operations
+native -> files
+mock -> script

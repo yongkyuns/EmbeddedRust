@@ -1,0 +1,62 @@
+name: OpenVela reference diagrams (one-time)
+on:
+  push:
+    branches: [docs/openvela-abstraction-reference]
+    paths:
+      - docs/diagrams/*.d2
+      - docs/diagrams/render.sh
+      - .github/workflows/openvela-diagrams-once.yml
+permissions:
+  contents: read
+jobs:
+  render:
+    if: github.repository == 'yongkyuns/EmbeddedRust' && github.ref == 'refs/heads/docs/openvela-abstraction-reference'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: docs/openvela-abstraction-reference
+      - name: Install verified D2 v0.9.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/nxrs-d2"
+          curl --fail --location --retry 2 https://github.com/d2lang/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz -o "$RUNNER_TEMP/nxrs-d2.tar.gz"
+          echo "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9  $RUNNER_TEMP/nxrs-d2.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/nxrs-d2.tar.gz" -C "$RUNNER_TEMP/nxrs-d2"
+          binary="$(find "$RUNNER_TEMP/nxrs-d2" -type f -name d2 -print -quit)"
+          test -n "$binary"
+          echo "$(dirname "$binary")" >> "$GITHUB_PATH"
+          "$binary" --version
+      - name: Render and validate SVGs
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash docs/diagrams/render.sh
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          for name in ('openvela-abstractions', 'nxrs-capability-boundary'):
+              p = Path('docs/diagrams') / (name + '.svg')
+              root = ET.parse(p).getroot()
+              assert root.tag == '{http://www.w3.org/2000/svg}svg', p
+              print(f'{p}: valid SVG, {p.stat().st_size} bytes')
+          PY
+      - name: Commit only the generated diagrams to this documentation branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/docs/openvela-abstraction-reference
+          git add -- docs/diagrams/openvela-abstractions.svg docs/diagrams/nxrs-capability-boundary.svg
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: render Material-style D2 reference diagrams'
+          git push origin HEAD:refs/heads/docs/openvela-abstraction-reference
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openvela-reference-diagrams
+          path: docs/diagrams/*.svg
