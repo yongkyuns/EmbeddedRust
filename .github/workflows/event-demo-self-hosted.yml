@@ -1,0 +1,374 @@
+name: Event-driven architecture demo (trusted self-hosted)
+
+on:
+  push:
+    branches:
+      - 'refactor/**'
+      - 'demo/**'
+      - 'build/**'
+    paths:
+      - 'app/event-demo/**'
+      - 'app/dual-imu-demo/**'
+      - 'service/navigation/**'
+      - 'service/event/**'
+      - 'hal/imu/**'
+      - 'hal/gnss/**'
+      - 'platform/nuttx/std-app/**'
+      - 'platform/firmware/**'
+      - '.cargo/config.toml'
+      - 'platform/nuttx/platforms/**'
+      - 'tools/check-architecture.py'
+      - 'tools/check-deployment.py'
+      - 'tools/build-nuttx-std-app.sh'
+      - 'tools/run-dual-imu-demo-mock.sh'
+      - 'tools/install-qemu-tools.sh'
+      - 'tests/nuttx-std/**'
+      - 'tests/host/test_architecture.py'
+      - 'tests/host/test_deployment.py'
+      - 'tests/host/test_platform_profiles.py'
+      - 'tests/host/test-event-demo-nuttx.py'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'external/nuttx'
+      - 'external/nuttx-apps'
+      - '.github/workflows/event-demo-self-hosted.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: event-demo-self-hosted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  demo:
+    if: github.repository == 'yongkyuns/rustcam' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, rustcam, nuttx, isolated]
+    timeout-minutes: 10
+    steps:
+      - name: Verify isolated Linux runner
+        run: |
+          set -eu
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          ! mount | grep -F '/Users/' >/dev/null
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Install pinned Rust
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --profile minimal --default-toolchain none
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustup toolchain install 1.90.0 --profile minimal --component clippy
+          rustup target add --toolchain 1.90.0 thumbv6m-none-eabi
+
+      - name: Enforce capability and service boundaries
+        run: |
+          cargo +1.90.0 test --locked -p rustcam-firmware
+          python3 -m unittest discover -s tests/host -p test_architecture.py -v
+          python3 -m unittest discover -s tests/host -p test_deployment.py -v
+          python3 -m unittest discover -s tests/host -p test_platform_profiles.py -v
+          python3 tools/check-architecture.py
+          python3 tools/check-deployment.py \
+            --app-manifest app/event-demo/Cargo.toml \
+            --hal-feature rustcam-imu/mock \
+            --hal-feature rustcam-gnss/mock \
+            --execution-platform std
+          python3 tools/check-deployment.py \
+            --app-manifest app/dual-imu-demo/Cargo.toml \
+            --hal-feature rustcam-imu/mock \
+            --execution-platform std
+
+      - name: Qualify workspace and active services
+        run: |
+          cargo +1.90.0 test --locked
+          cargo +1.90.0 test --locked -p rustcam-service-event
+          cargo +1.90.0 test --locked \
+            -p rustcam-navigation-services --test unconfigured
+          cargo +1.90.0 test --locked \
+            -p rustcam-navigation-services -p rustcam-service-event \
+            --features rustcam-imu/mock,rustcam-gnss/mock --test active
+          cargo +1.90.0 check --locked \
+            -p rustcam-imu-api -p rustcam-gnss-api \
+            --target thumbv6m-none-eabi
+
+      - name: Run service-owned std demo
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p target/event-demo
+          cargo +1.90.0 build --locked \
+            -p rustcam-event-demo -p rustcam-imu -p rustcam-gnss \
+            --features rustcam-imu/mock,rustcam-gnss/mock --bin event-demo
+          target/debug/event-demo --duration-ms 900 | tee target/event-demo/run.log
+          grep -q '^EVENT_DEMO topology:' target/event-demo/run.log
+          grep -q '^CONTROL phase=1 ' target/event-demo/run.log
+          grep -q '^CONTROL phase=2 ' target/event-demo/run.log
+          grep -q '^EVENT_DEMO PASS ' target/event-demo/run.log
+
+          bash tools/run-dual-imu-demo-mock.sh | tee target/event-demo/dual-imu.log
+          grep -q '^DUAL_IMU topology:' target/event-demo/dual-imu.log
+          grep -q '^DUAL_IMU PASS ' target/event-demo/dual-imu.log
+
+          # The IMU-only app's own dependency graph must not acquire a GNSS
+          # provider merely because another firmware image selects one.
+          cargo +1.90.0 tree --locked -p rustcam-dual-imu-demo \
+            > target/event-demo/dual-tree.txt
+          ! grep -q 'rustcam-gnss-mock' target/event-demo/dual-tree.txt
+
+          # Unsupported provider selections fail explicitly rather than falling
+          # back to a mock or leaking another app's build features.
+          set +e
+          cargo +1.90.0 run --locked -p rustcam-dual-imu-demo \
+            --bin dual-imu-demo > target/event-demo/dual-unconfigured.log 2>&1
+          status=$?
+          set -e
+          test "$status" -ne 0
+          grep -q 'IMU HAL acquisition failed: Unsupported' \
+            target/event-demo/dual-unconfigured.log
+
+      - name: Lint demo layers
+        run: |
+          cargo +1.90.0 clippy --locked \
+            -p rustcam-navigation-services -p rustcam-service-event \
+            -p rustcam-imu -p rustcam-imu-api -p rustcam-imu-mock \
+            -p rustcam-gnss -p rustcam-gnss-api -p rustcam-gnss-mock \
+            --features rustcam-imu/mock,rustcam-gnss/mock -- -D warnings
+          cargo +1.90.0 clippy --locked \
+            -p rustcam-event-demo -p rustcam-imu -p rustcam-gnss \
+            --features rustcam-imu/mock,rustcam-gnss/mock --bin event-demo -- -D warnings
+          cargo +1.90.0 clippy --locked \
+            -p rustcam-dual-imu-demo -p rustcam-imu \
+            --features rustcam-imu/mock --bin dual-imu-demo -- -D warnings
+
+  nuttx-esp32s3:
+    needs: [demo]
+    if: "!cancelled() && needs.demo.result == 'success' && github.repository == 'yongkyuns/rustcam' && github.actor == 'yongkyuns'"
+    runs-on: [self-hosted, Linux, X64, rustcam, nuttx, isolated]
+    timeout-minutes: 25
+    steps:
+      - name: Verify isolated Linux runner
+        run: |
+          set -eu
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          ! mount | grep -F '/Users/' >/dev/null
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          submodules: true
+          persist-credentials: false
+
+      - name: Install host dependencies and pinned Cargo
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bison flex gperf kconfig-frontends genromfs libncurses-dev \
+            zlib1g-dev libgcrypt20 libglib2.0-0 libpixman-1-0 libsdl2-2.0-0 libslirp0 \
+            python3 python3-venv curl xz-utils build-essential
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --profile minimal --default-toolchain none
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustup toolchain install 1.90.0 --profile minimal
+          python3 -m venv target/event-demo-qemu-venv
+          target/event-demo-qemu-venv/bin/pip install kconfiglib==14.1.0 esptool==4.8.1
+          echo "$GITHUB_WORKSPACE/target/event-demo-qemu-venv/bin" >> "$GITHUB_PATH"
+
+      - name: Install hash-verified Xtensa Rust, GCC and QEMU
+        run: bash tools/install-qemu-tools.sh
+
+      - name: Build selected deployment through Cargo
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n tools/build-nuttx-std-app.sh
+          mkdir -p target/firmware/event-demo/esp32s3-qemu-mock
+          cargo +1.90.0 firmware --app event-demo --platform esp32s3-qemu-mock 2>&1 \
+            | tee target/firmware/event-demo/esp32s3-qemu-mock/build-wrapper.log
+
+      - name: Execute actual app in ESP32-S3 QEMU
+        shell: bash
+        run: |
+          source target/qemu-tools/environment.sh
+          python3 tests/host/test-event-demo-nuttx.py "$(command -v qemu-system-xtensa)" \
+            --image target/firmware/event-demo/esp32s3-qemu-mock/nuttx/nuttx.merged.bin \
+            --log target/firmware/event-demo/esp32s3-qemu-mock/console.log
+
+      - name: Retain deployment evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: event-demo-esp32s3-nuttx
+          path: |
+            target/firmware/event-demo/esp32s3-qemu-mock/nuttx/nuttx
+            target/firmware/event-demo/esp32s3-qemu-mock/nuttx/nuttx.merged.bin
+            target/firmware/event-demo/esp32s3-qemu-mock/nuttx/nuttx.map
+            target/firmware/event-demo/esp32s3-qemu-mock/*.txt
+            target/firmware/event-demo/esp32s3-qemu-mock/*.log
+            target/firmware/event-demo/esp32s3-qemu-mock/*.json
+            target/firmware/event-demo/esp32s3-qemu-mock/*.jsonl
+            target/firmware/event-demo/esp32s3-qemu-mock/*.patch
+            target/firmware/event-demo/esp32s3-qemu-mock/*.config
+            target/firmware/event-demo/esp32s3-qemu-mock/*.sha256
+            target/firmware/event-demo/esp32s3-qemu-mock/abi-*
+          if-no-files-found: warn
+
+
+  nuttx-armv8m:
+    needs: demo
+    if: github.repository == 'yongkyuns/rustcam' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, rustcam, nuttx, isolated]
+    timeout-minutes: 30
+    steps:
+      - name: Verify isolated Linux runner
+        run: |
+          set -eu
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          ! mount | grep -F '/Users/' >/dev/null
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          submodules: true
+          persist-credentials: false
+
+      - name: Install ARM NuttX build and QEMU dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi \
+            qemu-system-arm gdb-multiarch bison flex gperf kconfig-frontends genromfs libncurses-dev \
+            python3 python3-venv curl build-essential
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --profile minimal --default-toolchain none
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustup toolchain install 1.90.0 --profile minimal
+          rustup toolchain install nightly-2025-09-15 --profile minimal --component rust-src
+          python3 -m venv target/event-demo-arm-venv
+          target/event-demo-arm-venv/bin/pip install kconfiglib==14.1.0
+          echo "$GITHUB_WORKSPACE/target/event-demo-arm-venv/bin" >> "$GITHUB_PATH"
+          printf '#include <math.h>\n' \
+            | arm-none-eabi-gcc -mcpu=cortex-m33 -mthumb -mfloat-abi=soft -E -x c - >/dev/null
+          test -f "$(arm-none-eabi-gcc -mcpu=cortex-m33 -mthumb -mfloat-abi=soft -print-file-name=libm.a)"
+
+      - name: Check Cargo firmware frontend and common backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n \
+            tools/build-nuttx-std-app.sh \
+            tests/nuttx-std/build.sh
+          cargo +1.90.0 firmware --list-apps
+          cargo +1.90.0 firmware --list-platforms
+          cargo +1.90.0 firmware --app event-demo --platform mps2-an521-mock --dry-run
+          cargo +1.90.0 firmware --app event-demo --platform pico2-mock --dry-run
+          python3 -m py_compile tests/host/test-event-demo-nuttx.py tests/nuttx-std/run.py
+          python3 tests/nuttx-std/run.py --self-test
+          python3 tests/nuttx-std/check-abi.py --self-test
+          python3 tests/nuttx-std/prepare-std.py --self-test
+
+      - name: Build Cortex-M33 QEMU firmware through Cargo
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p target/firmware/event-demo/mps2-an521-mock
+          cargo +1.90.0 firmware --app event-demo --platform mps2-an521-mock 2>&1 \
+            | tee target/firmware/event-demo/mps2-an521-mock/build-wrapper.log
+
+      - name: Build actual Pico 2 firmware through Cargo
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p target/firmware/event-demo/pico2-mock
+          cargo +1.90.0 firmware --app event-demo --platform pico2-mock 2>&1 \
+            | tee target/firmware/event-demo/pico2-mock/build-wrapper.log
+
+      - name: Execute Cargo-built Cortex-M33 firmware
+        shell: bash
+        run: |
+          python3 tests/host/test-event-demo-nuttx.py "$(command -v qemu-system-arm)" \
+            --machine mps2-an521 \
+            --image target/firmware/event-demo/mps2-an521-mock/nuttx/nuttx \
+            --log target/firmware/event-demo/mps2-an521-mock/console.log
+
+      # Keep the older std probe as an independent regression after the actual
+      # Cargo firmware path has already been qualified.
+      - name: Build dedicated ARM std runtime probe
+        shell: bash
+        env:
+          NUTTX_STD_COMPAT_FIXES: "1"
+        run: |
+          set -euo pipefail
+          mkdir -p target/nuttx-armv8m-qemu-std
+          bash tests/nuttx-std/build.sh armv8m-qemu 2>&1 \
+            | tee target/nuttx-armv8m-qemu-std/build.log
+
+      - name: Execute dedicated ARM std runtime probe
+        shell: bash
+        run: |
+          # run.py settles and byte-paces MPS2 NSH input; keep the runtime oracle unchanged.
+          python3 tests/nuttx-std/run.py \
+            --arm-mps2 \
+            --image target/nuttx-armv8m-qemu-std/nuttx/nuttx \
+            --output target/nuttx-armv8m-qemu-std
+
+      - name: Retain ARM deployment evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: event-demo-armv8m-pico2-nuttx
+          path: |
+            target/firmware/event-demo/mps2-an521-mock/nuttx/nuttx
+            target/firmware/event-demo/mps2-an521-mock/nuttx/nuttx.bin
+            target/firmware/event-demo/mps2-an521-mock/nuttx/nuttx.map
+            target/firmware/event-demo/mps2-an521-mock/*.txt
+            target/firmware/event-demo/mps2-an521-mock/*.log
+            target/firmware/event-demo/mps2-an521-mock/*.json
+            target/firmware/event-demo/mps2-an521-mock/*.jsonl
+            target/firmware/event-demo/mps2-an521-mock/*.patch
+            target/firmware/event-demo/mps2-an521-mock/*.config
+            target/firmware/event-demo/mps2-an521-mock/*.sha256
+            target/firmware/event-demo/mps2-an521-mock/abi-*
+            target/firmware/event-demo/pico2-mock/nuttx/nuttx
+            target/firmware/event-demo/pico2-mock/nuttx/nuttx.bin
+            target/firmware/event-demo/pico2-mock/nuttx/nuttx.map
+            target/firmware/event-demo/pico2-mock/*.txt
+            target/firmware/event-demo/pico2-mock/*.log
+            target/firmware/event-demo/pico2-mock/*.json
+            target/firmware/event-demo/pico2-mock/*.jsonl
+            target/firmware/event-demo/pico2-mock/*.patch
+            target/firmware/event-demo/pico2-mock/*.config
+            target/firmware/event-demo/pico2-mock/*.sha256
+            target/firmware/event-demo/pico2-mock/abi-*
+            target/nuttx-armv8m-qemu-std/nuttx/nuttx
+            target/nuttx-armv8m-qemu-std/nuttx/nuttx.map
+            target/nuttx-armv8m-qemu-std/*.txt
+            target/nuttx-armv8m-qemu-std/*.log
+            target/nuttx-armv8m-qemu-std/*.json
+            target/nuttx-armv8m-qemu-std/*.jsonl
+            target/nuttx-armv8m-qemu-std/*.patch
+            target/nuttx-armv8m-qemu-std/*.config
+            target/nuttx-armv8m-qemu-std/*.sha256
+            target/nuttx-armv8m-qemu-std/abi-*
+          if-no-files-found: warn

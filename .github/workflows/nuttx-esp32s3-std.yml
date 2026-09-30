@@ -1,0 +1,84 @@
+name: NuttX ESP32-S3 ordinary Rust std
+on:
+  pull_request:
+    paths:
+      - 'tests/nuttx-std/**'
+      - 'tests/browser-threads/src/main.rs'
+      - 'tests/browser-threads/Cargo.toml'
+      - 'tools/install-qemu-tools.sh'
+      - '.github/workflows/nuttx-esp32s3-std.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'external/nuttx'
+      - 'external/nuttx-apps'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nuttx-esp32s3-std-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NUTTX_STD_COMPAT_FIXES: "1"
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          submodules: true
+      - name: Install host Cargo and emulator dependencies
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          sudo apt-get update
+          sudo apt-get install -y bison flex gperf kconfig-frontends genromfs libncurses-dev zlib1g-dev libgcrypt20 libglib2.0-0 libpixman-1-0 libsdl2-2.0-0 libslirp0
+          python3 -m venv target/esp-std-venv
+          target/esp-std-venv/bin/pip install kconfiglib==14.1.0 esptool==4.8.1
+          echo "$GITHUB_WORKSPACE/target/esp-std-venv/bin" >> "$GITHUB_PATH"
+      - uses: actions/cache@v4
+        with:
+          path: target/qemu-tools/*.tar.xz
+          key: qemu-linux-x64-9.0.0-20240606-gcc14.2-20241119-rust1.90.0.0-v1
+      - name: Install hash-verified pinned Xtensa tools
+        run: bash tools/install-qemu-tools.sh
+      - name: Check oracle and SDK isolation controls
+        run: |
+          source target/qemu-tools/environment.sh
+          python3 tests/nuttx-std/run.py --self-test
+          python3 tests/nuttx-std/check-abi.py --self-test
+          python3 tests/nuttx-std/prepare-std.py --self-test
+          python3 tests/nuttx-std/test-link.py --prefix xtensa-esp32s3-elf-
+          python3 -m py_compile tests/nuttx-std/run.py tests/nuttx-std/check-abi.py tests/nuttx-std/prepare-std.py tests/nuttx-std/link.py tests/nuttx-std/test-link.py
+          bash -n tests/nuttx-std/build.sh
+      - name: Build normal Cargo binary and measure the Xtensa ABI
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p target/nuttx-esp32s3-std
+          bash tests/nuttx-std/build.sh esp32s3 2>&1 | tee target/nuttx-esp32s3-std/build.log
+      - name: Execute three fresh kernels and deliberate failure
+        run: |
+          source target/qemu-tools/environment.sh
+          python3 tests/nuttx-std/run.py --image target/nuttx-esp32s3-std/nuttx/nuttx --esp32-image target/nuttx-esp32s3-std/nuttx/nuttx.merged.bin --output target/nuttx-esp32s3-std
+      - name: Retain source, ABI, firmware and execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuttx-esp32s3-std-qualification
+          path: |
+            target/nuttx-esp32s3-std/*.elf
+            target/nuttx-esp32s3-std/*.map
+            target/nuttx-esp32s3-std/*.txt
+            target/nuttx-esp32s3-std/*.log
+            target/nuttx-esp32s3-std/*.json
+            target/nuttx-esp32s3-std/*.jsonl
+            target/nuttx-esp32s3-std/*.patch
+            target/nuttx-esp32s3-std/*.config
+            target/nuttx-esp32s3-std/*.sha256
+            target/nuttx-esp32s3-std/abi-*
+            target/nuttx-esp32s3-std/nuttx/nuttx
+            target/nuttx-esp32s3-std/nuttx/nuttx.merged.bin
+            target/nuttx-esp32s3-std/nuttx/nuttx.map
+          if-no-files-found: warn

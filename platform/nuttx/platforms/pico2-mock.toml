@@ -1,0 +1,20 @@
+board = "raspberrypi-pico-2:nsh"
+target = "thumbv8m.main-nuttx-eabi"
+crossdev = "arm-none-eabi-"
+machine = "ARM"
+image = "nuttx.bin"
+hal-features = ["rustcam-imu/mock", "rustcam-gnss/mock"]
+
+[kconfig]
+enable = ["RAW_BINARY"]
+disable = ["RP23XX_UF2_BINARY", "ARCH_FPU", "SMP", "NET", "DISABLE_PTHREAD"]
+set = ["PTHREAD_STACK_DEFAULT=65536"]
+require = [
+  "CONFIG_ARCH_ARM=y",
+  "CONFIG_ARCH_BOARD_RASPBERRYPI_PICO_2=y",
+  "CONFIG_ARCH_CHIP_RP23XX=y",
+  "CONFIG_RAM_SIZE=532480",
+  "CONFIG_RAW_BINARY=y",
+  "CONFIG_PTHREAD_STACK_DEFAULT=65536",
+]
+forbid-regex = "^CONFIG_(ARCH_FPU|SMP|NET|DISABLE_PTHREAD)=y$"

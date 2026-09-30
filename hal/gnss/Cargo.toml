@@ -1,0 +1,16 @@
+[package]
+name = "rustcam-gnss"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+mock = ["dep:rustcam-gnss-mock"]
+
+[dependencies]
+rustcam-gnss-api = { path = "api" }
+rustcam-gnss-mock = { path = "mock", optional = true }
+
+[package.metadata.rustcam]
+kind = "hal-capability"
+provider-features = ["mock"]

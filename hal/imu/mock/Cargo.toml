@@ -1,0 +1,11 @@
+[package]
+name = "rustcam-imu-mock"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rustcam-imu-api = { path = "../api" }
+
+[package.metadata.rustcam]
+mode = "synthetic-demo"
+platforms = ["std"]

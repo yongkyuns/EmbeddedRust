@@ -1,0 +1,11 @@
+[package]
+name = "rustcam-storage-mock"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rustcam-storage-api = { path = "../api" }
+
+[package.metadata.rustcam]
+mode = "mock"
+platforms = ["std", "wasm32-unknown-unknown"]

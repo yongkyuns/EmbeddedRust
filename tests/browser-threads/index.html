@@ -1,0 +1,44 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Rust std pthread qualification</title>
+<pre id="output"></pre>
+<script>
+"use strict";
+const q = window.qualification = {
+  isolated: globalThis.crossOriginIsolated === true,
+  sharedMemory: typeof SharedArrayBuffer !== "undefined",
+  phase: "loading", lines: [], errors: [], reports: [], entries: 0,
+  cpuTicks: 0, exitCode: null, aborted: false, done: false
+};
+setInterval(() => { if (q.phase === "cpu") q.cpuTicks++; }, 10);
+function print(line) {
+  line = String(line);
+  q.lines.push(line);
+  document.getElementById("output").textContent += line + "\n";
+  if (line === "RUSTCAM_MAIN_ENTERED") q.entries++;
+  if (line === "RUSTCAM_CPU_BEGIN") q.phase = "cpu";
+  if (line === "RUSTCAM_CPU_END") q.phase = "running";
+  if (line.startsWith("RUSTCAM_THREAD_REPORT ")) {
+    try { q.reports.push(JSON.parse(line.slice("RUSTCAM_THREAD_REPORT ".length))); }
+    catch (e) { q.errors.push(String(e)); }
+  }
+}
+window.addEventListener("error", e => { q.errors.push(String(e.message)); });
+window.addEventListener("unhandledrejection", e => { q.errors.push(String(e.reason)); });
+var Module = {
+  arguments: [new URLSearchParams(location.search).get("case") || "pass"],
+  print,
+  printErr: line => { q.errors.push(String(line)); },
+  onAbort: reason => { q.aborted = true; q.errors.push(String(reason)); q.done = true; },
+  onExit: code => { q.exitCode = code; q.done = true; q.phase = "exited"; }
+};
+if (!q.isolated || !q.sharedMemory) {
+  q.phase = "unsupported";
+  q.done = true;
+} else {
+  const script = document.createElement("script");
+  script.src = "__RUSTCAM_SCRIPT__";
+  script.onerror = () => { q.errors.push("module load failed"); q.done = true; };
+  document.body.appendChild(script);
+}
+</script>

@@ -1,0 +1,12 @@
+[package]
+name = "rustcam-storage-nuttx"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rustcam-storage-api = { path = "../api" }
+rustcam-nuttx-support = { path = "../../support/nuttx" }
+
+[package.metadata.rustcam]
+mode = "fixture-vfs-recording"
+platforms = ["nuttx", "core-only-fixture"]

@@ -1,0 +1,11 @@
+[package]
+name = "rustcam-camera-native"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rustcam-camera-api = { path = "../api" }
+
+[package.metadata.rustcam]
+mode = "replay"
+platforms = ["linux", "macos", "windows"]

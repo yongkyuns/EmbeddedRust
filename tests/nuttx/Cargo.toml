@@ -1,0 +1,28 @@
+[package]
+name = "rustcam-nuttx-app"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["staticlib"]
+test = false
+doctest = false
+
+[[bin]]
+name = "rustcam-nuttx-std-app"
+path = "src/main.rs"
+required-features = ["std-integration"]
+
+[features]
+std-integration = ["dep:rustcam-transport-nuttx"]
+
+[dependencies]
+rustcam-camera-api = { path = "../../hal/camera/api" }
+rustcam-storage-api = { path = "../../hal/storage/api" }
+rustcam-transport-api = { path = "../../hal/transport/api" }
+rustcam-services = { path = "../../service" }
+rustcam-applications = { path = "../../app/rustcam" }
+rustcam-camera-nuttx = { path = "../../hal/camera/nuttx" }
+rustcam-storage-nuttx = { path = "../../hal/storage/nuttx" }
+rustcam-nuttx-support = { path = "../../hal/support/nuttx" }
+rustcam-transport-nuttx = { path = "../../hal/transport/nuttx", optional = true }

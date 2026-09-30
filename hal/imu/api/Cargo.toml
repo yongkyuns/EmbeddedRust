@@ -1,0 +1,7 @@
+[package]
+name = "rustcam-imu-api"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rustcam-hal-common = { path = "../../common" }

@@ -1,0 +1,57 @@
+name: NuttX simulator
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nuttx-sim-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    name: NuttX kernel, HAL and application execution
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.90.0
+          components: rust-src
+          targets: x86_64-unknown-none
+      - name: Install NuttX simulator build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bison flex gperf kconfig-frontends genromfs libncurses-dev zlib1g-dev
+          python3 -m pip install --break-system-packages kconfiglib==14.1.0
+      - name: Build isolated NuttX simulator and verify target syscall linkage
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p target/nuttx-sim
+          bash tools/build-nuttx-sim.sh 2>&1 | tee target/nuttx-sim/build.log
+      - name: Execute twice in one NuttX kernel and check independent disk/UDP decoding
+        run: python3 tests/host/test-nuttx-sim.py target/nuttx-sim/nuttx/nuttx
+      - name: Retain executable, configuration, provenance and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuttx-sim-qualification
+          path: |
+            target/nuttx-sim/nuttx/nuttx
+            target/nuttx-sim/resolved.config
+            target/nuttx-sim/provenance.txt
+            target/nuttx-sim/binaries.sha256
+            target/nuttx-sim/symbols.txt
+            target/nuttx-sim/relocations.txt
+            target/nuttx-sim/build.log
+            target/nuttx-sim/console.log

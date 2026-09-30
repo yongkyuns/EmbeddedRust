@@ -1,0 +1,16 @@
+[package]
+name = "rustcam-imu"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+mock = ["dep:rustcam-imu-mock"]
+
+[dependencies]
+rustcam-imu-api = { path = "api" }
+rustcam-imu-mock = { path = "mock", optional = true }
+
+[package.metadata.rustcam]
+kind = "hal-capability"
+provider-features = ["mock"]

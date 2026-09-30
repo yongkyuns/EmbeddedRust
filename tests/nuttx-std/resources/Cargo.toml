@@ -1,0 +1,8 @@
+[package]
+name = "rustcam-std-resources"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+# Explicit workspace member, excluded from default-members. Built as its own
+# destructive qualification image, never as a production app dependency.

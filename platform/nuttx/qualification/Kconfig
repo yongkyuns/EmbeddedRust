@@ -1,0 +1,15 @@
+# Keep the established command/config name for compatibility with sim CI.
+config EXAMPLES_RUSTCAM_SIM
+	bool "Rustcam portable NuttX integration qualification"
+	default n
+	depends on ARCH_SIM || ARCH_CHIP_ESP32S3
+
+config EXAMPLES_RUSTCAM_PREEMPTION
+	bool "Qualify timer-driven preemption of a CPU-bound FIFO task"
+	depends on EXAMPLES_RUSTCAM_SIM && !SMP
+	default y if ARCH_CHIP_ESP32S3
+	default n
+	---help---
+		Requires asynchronous timer interrupt delivery. The current sim
+		walltime-sleep profile deliberately leaves this off; QEMU requires
+		it. No production application depends on this test option.

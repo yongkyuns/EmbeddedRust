@@ -1,0 +1,11 @@
+[package]
+name = "rustcam-camera-api"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rustcam-hal-common = { path = "../../common" }
+
+[package.metadata.rustcam]
+mode = "api"
+platforms = ["core", "std"]

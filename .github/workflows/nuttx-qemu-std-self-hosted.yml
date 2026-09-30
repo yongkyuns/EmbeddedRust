@@ -1,0 +1,101 @@
+name: ESP32-S3 std integration (trusted self-hosted)
+
+on:
+  push:
+    branches:
+      - 'refactor/**'
+    paths:
+      - 'tests/nuttx/**'
+      - 'tests/nuttx-std/**'
+      - 'hal/camera/nuttx/**'
+      - 'hal/storage/nuttx/**'
+      - 'hal/transport/nuttx/**'
+      - 'hal/support/nuttx/**'
+      - 'platform/nuttx/qualification/**'
+      - 'tools/build-nuttx-qemu.sh'
+      - 'tools/install-qemu-tools.sh'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'external/nuttx'
+      - 'external/nuttx-apps'
+      - '.github/workflows/nuttx-qemu-std-self-hosted.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nuttx-qemu-std-self-hosted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualify:
+    if: github.repository == 'yongkyuns/rustcam' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, rustcam, nuttx, isolated]
+    timeout-minutes: 25
+    steps:
+      - name: Verify isolated Linux runner
+        run: |
+          set -eu
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          ! mount | grep -F '/Users/' >/dev/null
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          submodules: true
+          persist-credentials: false
+
+      - name: Install host dependencies and pinned Cargo
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends             bison flex gperf kconfig-frontends genromfs libncurses-dev             zlib1g-dev libgcrypt20 libglib2.0-0 libpixman-1-0 libsdl2-2.0-0 libslirp0             python3 python3-venv curl xz-utils build-essential
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs               | sh -s -- -y --profile minimal --default-toolchain none
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustup toolchain install 1.90.0 --profile minimal
+          python3 -m venv target/qemu-venv
+          target/qemu-venv/bin/pip install kconfiglib==14.1.0 esptool==4.8.1
+          echo "$GITHUB_WORKSPACE/target/qemu-venv/bin" >> "$GITHUB_PATH"
+
+      - name: Install hash-verified Xtensa Rust, GCC and QEMU
+        run: bash tools/install-qemu-tools.sh
+
+      - name: Build full integration through ordinary Rust std
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n tests/nuttx-std/build.sh tools/build-nuttx-qemu.sh
+          mkdir -p target/nuttx-qemu
+          bash tools/build-nuttx-qemu.sh 2>&1 | tee target/nuttx-qemu/build-wrapper.log
+
+      - name: Execute one std runtime invocation and negative control
+        shell: bash
+        run: |
+          source target/qemu-tools/environment.sh
+          python3 tests/host/test-nuttx-sim.py "$(command -v qemu-system-xtensa)"             --qemu-image target/nuttx-qemu/nuttx/nuttx.merged.bin             --log target/nuttx-qemu/console.log             --cycles 1 --require-std-main
+
+      - name: Retain image, std/ABI evidence and execution transcript
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nuttx-esp32s3-std-integration
+          path: |
+            target/nuttx-qemu/nuttx/nuttx
+            target/nuttx-qemu/nuttx/nuttx.merged.bin
+            target/nuttx-qemu/nuttx/nuttx.map
+            target/nuttx-qemu/*.txt
+            target/nuttx-qemu/*.log
+            target/nuttx-qemu/*.json
+            target/nuttx-qemu/*.jsonl
+            target/nuttx-qemu/*.patch
+            target/nuttx-qemu/*.config
+            target/nuttx-qemu/*.sha256
+            target/nuttx-qemu/abi-*
+            target/nuttx-qemu/socket-*
+            target/nuttx-qemu/harness-source.tar
+          if-no-files-found: warn

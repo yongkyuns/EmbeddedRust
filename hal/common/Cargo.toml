@@ -1,0 +1,10 @@
+[package]
+name = "rustcam-hal-common"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+
+[package.metadata.rustcam]
+mode = "portable"
+platforms = ["core", "std"]

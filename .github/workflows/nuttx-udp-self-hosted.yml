@@ -1,0 +1,119 @@
+name: NuttX std UDP (trusted self-hosted)
+
+on:
+  push:
+    branches:
+      - 'test/**'
+      - 'refactor/**'
+    paths:
+      - 'tests/nuttx-std/**'
+      - 'hal/transport/api/**'
+      - 'hal/transport/nuttx/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'external/nuttx'
+      - 'external/nuttx-apps'
+      - '.github/workflows/nuttx-udp-self-hosted.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nuttx-udp-self-hosted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualify:
+    # Never expose the persistent self-hosted runner to pull_request events or
+    # pushes by another account. The actual runner is additionally isolated in
+    # a Lima VM with no macOS filesystem mounts.
+    if: github.repository == 'yongkyuns/rustcam' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, rustcam, nuttx, isolated]
+    timeout-minutes: 25
+    env:
+      NUTTX_STD_COMPAT_FIXES: "1"
+      SOURCE_SHA: ${{ github.sha }}
+
+    steps:
+      - name: Verify isolated Linux runner
+        run: |
+          set -eu
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          echo "runner=$RUNNER_NAME"
+          echo "os=$(uname -sr)"
+          if mount | grep -F '/Users/' >/dev/null; then
+            echo "Unexpected macOS home mount inside CI VM" >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          submodules: true
+          persist-credentials: false
+
+      - name: Install pinned tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ca-certificates curl \
+            gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf \
+            qemu-system-misc gdb-multiarch \
+            bison flex gperf kconfig-frontends genromfs libncurses-dev \
+            python3 python3-pip git make build-essential
+
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --profile minimal --default-toolchain none
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
+
+          rustup toolchain install 1.90.0 --profile minimal
+          rustup toolchain install nightly-2025-09-15 --profile minimal --component rust-src
+          python3 -m pip install --break-system-packages kconfiglib==14.1.0
+
+      - name: Host rejection controls and native std execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tests/nuttx-std/udp/check-abi.py --self-test
+          python3 tests/nuttx-std/udp/run.py --self-test
+          bash -n tests/nuttx-std/build.sh
+          cargo +1.90.0 build --locked -p rustcam-std-udp
+          python3 tests/nuttx-std/udp/run.py \
+            --native target/debug/rustcam-std-udp \
+            --output target/udp-native
+
+      - name: Build ordinary binary and reject incompatible socket ABI before boot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p target/nuttx-udp
+          bash tests/nuttx-std/build.sh udp 2>&1 | tee target/nuttx-udp/build.log
+
+      - name: Execute three fresh kernels and deliberate failure
+        run: python3 tests/nuttx-std/udp/run.py --image target/nuttx-udp/nuttx/nuttx
+
+      - name: Retain ABI, image and execution evidence, including failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nuttx-std-udp-self-hosted-qualification
+          path: |
+            target/udp-native/*.log
+            target/nuttx-udp/*.txt
+            target/nuttx-udp/*.log
+            target/nuttx-udp/*.json
+            target/nuttx-udp/*.jsonl
+            target/nuttx-udp/*.patch
+            target/nuttx-udp/*.config
+            target/nuttx-udp/*.sha256
+            target/nuttx-udp/abi-*
+            target/nuttx-udp/socket-*
+            target/nuttx-udp/nuttx/nuttx
+            target/nuttx-udp/nuttx/nuttx.map
+          if-no-files-found: warn

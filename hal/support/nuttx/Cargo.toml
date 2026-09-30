@@ -1,0 +1,11 @@
+[package]
+name = "rustcam-nuttx-support"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rustcam-hal-common = { path = "../../common" }
+
+[package.metadata.rustcam]
+mode = "descriptor-support"
+platforms = ["nuttx", "core-only-fixture"]

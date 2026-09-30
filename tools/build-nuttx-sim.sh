@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Build a genuine NuttX sim image without modifying the ESP32-S3 worktree.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+OUT="$ROOT/target/nuttx-sim"
+export RUSTUP_TOOLCHAIN=1.90.0
+if [[ "$(uname -s)" != Linux || "$(uname -m)" != x86_64 ]]; then
+  echo 'This simulator profile requires Linux x86_64.' >&2
+  exit 1
+fi
+for command in cargo gcc make git kconfig-tweak genromfs; do
+  command -v "$command" >/dev/null || { echo "Missing prerequisite: $command" >&2; exit 1; }
+done
+mkdir -p "$OUT"
+rm -rf "$OUT/nuttx" "$OUT/apps"
+mkdir -p "$OUT/nuttx" "$OUT/apps"
+for entry in 'nuttx:nuttx' 'nuttx-apps:apps'; do
+  source_name=${entry%:*}
+  destination=${entry#*:}
+  git -C "$ROOT/external/$source_name" rev-parse HEAD
+  git -C "$ROOT/external/$source_name" archive HEAD | tar -x -C "$OUT/$destination"
+done
+{
+  echo "rustcam=$(git -C "$ROOT" rev-parse HEAD)"
+  echo "nuttx=$(git -C "$ROOT/external/nuttx" rev-parse HEAD)"
+  echo "apps=$(git -C "$ROOT/external/nuttx-apps" rev-parse HEAD)"
+  echo 'core-build=source; code-model=small; relocation-model=pic; build-std=core'
+  rustc --version --verbose
+} > "$OUT/provenance.txt"
+cd "$ROOT"
+# The distributed core uses the kernel code model, not small/PIC. Scope the
+# unstable rebuild opt-in to this pinned compiler invocation.
+RUSTC_BOOTSTRAP=1 RUSTFLAGS='-C code-model=small -C relocation-model=pic' \
+  cargo build --locked --profile nuttx-sim --lib -p rustcam-nuttx-app \
+  --target x86_64-unknown-none -Zbuild-std=core
+LIB="$ROOT/target/x86_64-unknown-none/nuttx-sim/librustcam_nuttx_app.a"
+APP="$OUT/apps/examples/rustcam_sim"
+mkdir -p "$APP"
+cp "$ROOT/platform/nuttx/qualification/"* "$APP/"
+cp "$ROOT/tests/nuttx/c/"* "$APP/"
+cp "$ROOT/hal/camera/nuttx/ffi/"{camera.c,camera.h} "$APP/"
+cp "$ROOT/hal/storage/nuttx/ffi/"{storage.c,storage.h} "$APP/"
+cp "$ROOT/hal/support/nuttx/ffi/"{nuttx_support.c,nuttx_support.h} "$APP/"
+cd "$OUT/nuttx"
+source "$ROOT/platform/nuttx/profiles/sim.sh"
+make -j"${NUTTX_SIM_JOBS:-4}" RUSTCAM_SIM_LIB="$LIB"
+cp .config "$OUT/resolved.config"
+nm arch/sim/src/nuttx.rel > "$OUT/symbols.txt"
+objdump -r arch/sim/src/nuttx.rel > "$OUT/relocations.txt"
+python3 "$ROOT/tests/host/check-nuttx-sim-link.py" "$OUT"
+sha256sum nuttx "$LIB" > "$OUT/binaries.sha256"
+echo "NuttX simulator executable: $OUT/nuttx/nuttx"

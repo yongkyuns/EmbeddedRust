@@ -1,0 +1,11 @@
+[package]
+name = "rustcam-transport-native"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rustcam-transport-api = { path = "../api" }
+
+[package.metadata.rustcam]
+mode = "nonblocking-udp"
+platforms = ["linux", "macos", "windows"]

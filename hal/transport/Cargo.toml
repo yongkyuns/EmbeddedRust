@@ -1,0 +1,20 @@
+[package]
+name = "rustcam-transport"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+mock = ["dep:rustcam-transport-mock"]
+native = ["dep:rustcam-transport-native"]
+nuttx = ["dep:rustcam-transport-nuttx"]
+
+[dependencies]
+rustcam-transport-api = { path = "api" }
+rustcam-transport-mock = { path = "mock", optional = true }
+rustcam-transport-native = { path = "native", optional = true }
+rustcam-transport-nuttx = { path = "nuttx", optional = true }
+
+[package.metadata.rustcam]
+kind = "hal-capability"
+provider-features = ["mock", "native", "nuttx"]

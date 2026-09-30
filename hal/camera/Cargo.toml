@@ -1,0 +1,20 @@
+[package]
+name = "rustcam-camera"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+mock = ["dep:rustcam-camera-mock"]
+native = ["dep:rustcam-camera-native"]
+nuttx = ["dep:rustcam-camera-nuttx"]
+
+[dependencies]
+rustcam-camera-api = { path = "api" }
+rustcam-camera-mock = { path = "mock", optional = true }
+rustcam-camera-native = { path = "native", optional = true }
+rustcam-camera-nuttx = { path = "nuttx", optional = true }
+
+[package.metadata.rustcam]
+kind = "hal-capability"
+provider-features = ["mock", "native", "nuttx"]

@@ -1,0 +1,8 @@
+[package]
+name = "rustcam-firmware"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "rustcam-firmware"
+path = "src/main.rs"

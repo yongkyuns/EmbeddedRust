@@ -1,0 +1,4 @@
+config EXAMPLES_RUSTCAM_STD
+	bool "Rustcam ordinary Rust main/std qualification"
+	default n
+	depends on BUILD_FLAT && !DISABLE_PTHREAD

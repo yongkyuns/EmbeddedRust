@@ -1,0 +1,69 @@
+name: Transport HAL isolation (trusted self-hosted)
+
+on:
+  push:
+    branches:
+      - 'refactor/**'
+    paths:
+      - 'hal/**'
+      - 'app/**'
+      - 'service/**'
+      - 'tools/check-transport-isolation.py'
+      - 'tools/check-camera-isolation.py'
+      - 'tests/host/test_transport_isolation.py'
+      - 'tests/host/test_architecture.py'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/transport-hal-self-hosted.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: transport-hal-self-hosted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolation:
+    if: github.repository == 'yongkyuns/rustcam' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, rustcam, nuttx, isolated]
+    timeout-minutes: 15
+    steps:
+      - name: Verify isolated Linux runner
+        run: |
+          set -eu
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          ! mount | grep -F '/Users/' >/dev/null
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          submodules: false
+          persist-credentials: false
+
+      - name: Install pinned Rust targets
+        run: |
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustup toolchain install 1.90.0 --profile minimal --component clippy
+          rustup target add --toolchain 1.90.0 thumbv6m-none-eabi wasm32-unknown-unknown
+
+      - name: Reject invalid build evidence and received datagrams
+        run: |
+          python3 tools/check-camera-isolation.py --self-test
+          python3 -m unittest discover -s tests/host -p test_transport_isolation.py -v
+
+      - name: Build independent transport and aggregate-free native app
+        run: python3 tools/check-transport-isolation.py
+
+      - name: Check ownership, rejection and app startup allocation
+        run: |
+          cargo +1.90.0 test --locked -p rustcam-transport-native -p rustcam-transport-mock
+          cargo +1.90.0 test --locked -p rustcam-applications --features rustcam-applications/cli,rustcam-camera/native,rustcam-storage/native,rustcam-transport/native --bin rustcam
+
+      - name: Lint portable/native transport packages
+        run: cargo +1.90.0 clippy --locked -p rustcam-transport-api -p rustcam-transport-native -p rustcam-transport-mock --all-targets -- -D warnings

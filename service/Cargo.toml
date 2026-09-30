@@ -1,0 +1,9 @@
+[package]
+name = "rustcam-services"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rustcam-camera-api = { path = "../hal/camera/api" }
+rustcam-storage-api = { path = "../hal/storage/api" }
+rustcam-transport-api = { path = "../hal/transport/api" }

@@ -1,0 +1,12 @@
+[package]
+name = "rustcam-camera-nuttx"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rustcam-camera-api = { path = "../api" }
+rustcam-nuttx-support = { path = "../../support/nuttx" }
+
+[package.metadata.rustcam]
+mode = "read-device"
+platforms = ["nuttx", "core-only-fixture"]

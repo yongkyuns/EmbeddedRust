@@ -1,0 +1,13 @@
+include $(APPDIR)/Make.defs
+
+PROGNAME = $(RUSTCAM_APP_COMMAND)
+PRIORITY = $(RUSTCAM_APP_PRIORITY)
+STACKSIZE = $(RUSTCAM_APP_STACKSIZE)
+MODULE = $(CONFIG_EXAMPLES_RUSTCAM_STD_APP)
+EXTOBJS = rustcam_app.o
+
+rustcam_app.o: $(RUSTCAM_STD_ELF)
+	@test -n "$(RUSTCAM_APP_COMMAND)"
+	$(OBJCOPY) --redefine-sym main=$(RUSTCAM_APP_COMMAND)_main $< $@
+
+include $(APPDIR)/Application.mk

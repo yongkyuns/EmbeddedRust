@@ -1,0 +1,48 @@
+name: Storage HAL isolation
+on:
+  pull_request:
+    paths:
+      - 'hal/**'
+      - 'app/**'
+      - 'service/**'
+      - 'tools/check-storage-isolation.py'
+      - 'tools/check-camera-isolation.py'
+      - 'tests/host/test_storage_isolation.py'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/storage-hal.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: storage-hal-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  isolation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.90.0
+          targets: thumbv6m-none-eabi,wasm32-unknown-unknown
+          components: clippy
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reject invalid build evidence and persisted records
+        run: |
+          python tools/check-camera-isolation.py --self-test
+          python -m unittest discover -s tests/host -p test_storage_isolation.py -v
+      - name: Build storage without camera or transport providers
+        run: python tools/check-storage-isolation.py
+      - name: Preserve worker failure, saturation and barrier tests
+        run: cargo test --locked -p rustcam-storage-native -p rustcam-storage-mock
+      - name: Lint independent storage packages
+        run: cargo clippy --locked -p rustcam-storage-api -p rustcam-storage-native -p rustcam-storage-mock --all-targets -- -D warnings
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: storage-hal-isolation
+          path: target/storage-isolation
