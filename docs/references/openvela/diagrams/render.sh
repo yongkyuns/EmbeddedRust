@@ -8,5 +8,5 @@ if ! command -v "$D2" >/dev/null 2>&1; then
   exit 1
 fi
 for name in openvela-abstractions nxrs-capability-boundary; do
-  "$D2" --layout=elk --theme=0 "$name.d2" "$name.svg"
+  "$D2" --layout=elk --theme=0 --pad=16 "$name.d2" "$name.svg"
 done
