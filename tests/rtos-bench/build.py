@@ -110,6 +110,10 @@ def c_firmware(args, out):
     run(['python3', ROOT / 'tools/apply-nuttx-patches.py',
          '--source', out / 'nuttx', '--revision', revisions['nuttx'],
          '--record', out / 'nuttx-patches.json'])
+    run(['python3', ROOT / 'tools/apply-nuttx-patches.py',
+         '--component', 'nuttx-apps', '--source', out / 'apps',
+         '--revision', revisions['nuttx-apps'],
+         '--record', out / 'nuttx-apps-patches.json'])
     app = out / 'apps/examples/nxrs_bench'
     app.mkdir()
     if args.suite == 'posix':

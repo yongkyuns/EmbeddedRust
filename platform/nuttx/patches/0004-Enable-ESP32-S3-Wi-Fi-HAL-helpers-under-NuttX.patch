@@ -1,0 +1,25 @@
+From 433092e620a967780bfaabf4908b3d440bb7ce46 Mon Sep 17 00:00:00 2001
+From: Yongkyun Shin <yongkyuns@gmail.com>
+Date: Sat, 26 Sep 2026 06:56:23 -0400
+Subject: [PATCH 4/5] Enable ESP32-S3 Wi-Fi HAL helpers under NuttX
+
+---
+ arch/xtensa/src/esp32s3/hal.mk | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/arch/xtensa/src/esp32s3/hal.mk b/arch/xtensa/src/esp32s3/hal.mk
+index f728d2e4bd..d175d9ee14 100644
+--- a/arch/xtensa/src/esp32s3/hal.mk
++++ b/arch/xtensa/src/esp32s3/hal.mk
+@@ -288,3 +288,11 @@ ifeq ($(CONFIG_ESPRESSIF_SIMPLE_BOOT),y)
+ endif
+ 
+ CFLAGS += ${DEFINE_PREFIX}ESP_PLATFORM=1
++
++# The NuttX Wi-Fi Kconfig symbol is CONFIG_ESPRESSIF_WIFI, while the
++# vendored ESP-HAL gates wifi_module_enable/disable() on the ESP-IDF-style
++# CONFIG_ESP_WIFI_ENABLED macro. Keep the HAL Wi-Fi clock helpers available
++# when NuttX enables the ESP32-S3 Wi-Fi adapter.
++ifeq ($(CONFIG_ESPRESSIF_WIFI),y)
++CFLAGS += ${DEFINE_PREFIX}CONFIG_ESP_WIFI_ENABLED=1
++endif

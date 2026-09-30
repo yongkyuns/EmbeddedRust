@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply the tracked NuttX patch series to an archived build copy only."""
+"""Apply tracked upstream patch series to archived NuttX build copies only."""
 
 import argparse
 import hashlib
@@ -10,8 +10,21 @@ import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PATCH_DIR = ROOT / "platform/nuttx/patches"
-SERIES = ("0001-flat-build-global-pthread-keys.patch",)
+SERIES = {
+    "nuttx": (
+        "0001-Fix-ESP32S3-BLE-advertising.patch",
+        "0002-Add-ESP32S3-NimBLE-HCI-configuration-option.patch",
+        "0003-Add-ESP32-S3-camera-driver-for-OV3660-sensor.patch",
+        "0004-Enable-ESP32-S3-Wi-Fi-HAL-helpers-under-NuttX.patch",
+        "0005-net-udp-return-zero-length-datagrams-from-readahead.patch",
+        "0006-flat-build-global-pthread-keys.patch",
+    ),
+    "nuttx-apps": ("0001-Add-ESP32S3-VHCI-transport-support-for-NimBLE.patch",),
+}
+MARKERS = {
+    "nuttx": "libs/libc/tls/Kconfig",
+    "nuttx-apps": "wireless/bluetooth/nimble/Makefile.nimble",
+}
 
 
 def sha256(path):
@@ -31,26 +44,28 @@ def run_git_apply(source, *options, patch):
     )
 
 
-def apply(source, revision, record):
+def apply(source, revision, record, component="nuttx"):
     source = Path(source).resolve(strict=True)
     if (source / ".git").exists():
         raise ValueError("refusing to patch a Git checkout; use an archived build copy")
-    if not (source / "libs/libc/tls/Kconfig").is_file():
-        raise ValueError("not a NuttX source archive")
+    if not (source / MARKERS[component]).is_file():
+        raise ValueError(f"not a {component} source archive")
 
-    provenance = {"schema": 1, "nuttx_revision": revision, "patches": []}
-    for name in SERIES:
-        patch = PATCH_DIR / name
+    provenance = {"schema": 1, "component": component,
+                  "upstream_revision": revision, "patches": []}
+    for name in SERIES[component]:
+        patch = ROOT / "platform" / component / "patches" / name
         paths = [line.split("\t", 2)[2] for line in subprocess.check_output(
             ["git", "apply", "--numstat", str(patch)],
             cwd=source, env=git_env(source), text=True,
         ).splitlines()]
-        if not paths or any(not (source / path).is_file() for path in paths):
-            raise ValueError(f"patch {name} references missing source files")
+        if not paths:
+            raise ValueError(f"patch {name} has no source changes")
         check = run_git_apply(source, "--check", "--whitespace=error", patch=patch)
         if check.returncode:
             raise ValueError(f"patch {name} is incompatible or already applied: {check.stderr.strip()}")
-        before = {path: sha256(source / path) for path in paths}
+        before = {path: sha256(source / path) if (source / path).is_file() else None
+                  for path in paths}
         result = run_git_apply(source, "--whitespace=error", patch=patch)
         if result.returncode:
             raise RuntimeError(f"failed to apply {name}: {result.stderr.strip()}")
@@ -69,5 +84,6 @@ if __name__ == "__main__":
     parser.add_argument("--source", required=True, type=Path)
     parser.add_argument("--revision", required=True)
     parser.add_argument("--record", required=True, type=Path)
+    parser.add_argument("--component", choices=SERIES, default="nuttx")
     args = parser.parse_args()
-    apply(args.source, args.revision, args.record)
+    apply(args.source, args.revision, args.record, args.component)

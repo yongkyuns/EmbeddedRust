@@ -1,0 +1,221 @@
+From c74c0548a6c7a7cc6126657f20785b67139d30fa Mon Sep 17 00:00:00 2001
+From: Yongkyun Shin <yongkyuns@gmail.com>
+Date: Thu, 22 Jan 2026 13:42:07 -0500
+Subject: [PATCH 1/5] Fix ESP32S3 BLE advertising
+
+- esp32s3_ble.c: Fix silent packet drop when VHCI not ready
+  - Add semaphore-based wait with retries for send readiness
+  - esp32s3_ble_send_ready() now posts semaphore to wake senders
+
+- bt_hcicore.c: Stop existing advertising before restarting
+  - Prevents "Command Disallowed" (HCI status 12) error when
+    advertising parameters are changed while advertising is active
+
+- bt_services.c: Fix advertising data to include device name
+  - Add name to advertising data (not just scan response)
+  - Fix incorrect length field for name data
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ arch/xtensa/src/esp32s3/esp32s3_ble.c | 46 +++++++++++++++++++++++++--
+ wireless/bluetooth/bt_hcicore.c       | 19 +++++++++--
+ wireless/bluetooth/bt_services.c      |  9 ++++--
+ 3 files changed, 68 insertions(+), 6 deletions(-)
+
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_ble.c b/arch/xtensa/src/esp32s3/esp32s3_ble.c
+index 4f4c979893..35828b46f7 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_ble.c
++++ b/arch/xtensa/src/esp32s3/esp32s3_ble.c
+@@ -36,6 +36,7 @@
+ #include <nuttx/nuttx.h>
+ #include <nuttx/kmalloc.h>
+ #include <nuttx/wqueue.h>
++#include <nuttx/semaphore.h>
+ #include <nuttx/net/bluetooth.h>
+ #include <nuttx/wireless/bluetooth/bt_driver.h>
+ #include <nuttx/wireless/bluetooth/bt_uart.h>
+@@ -50,6 +51,14 @@
+ 
+ #define BLE_BUF_SIZE      1024
+ 
++/* Send timeout in milliseconds */
++
++#define BLE_SEND_TIMEOUT_MS  100
++
++/* Max number of retries when VHCI is not ready */
++
++#define BLE_SEND_MAX_RETRIES 50
++
+ /****************************************************************************
+  * Private Types
+  ****************************************************************************/
+@@ -57,6 +66,7 @@
+ struct esp32s3_ble_priv_s
+ {
+   struct bt_driver_s drv;         /* NuttX BT/BLE driver data */
++  sem_t send_sem;                 /* Semaphore for send readiness */
+ };
+ 
+ /****************************************************************************
+@@ -102,6 +112,7 @@ static esp_vhci_host_callback_t vhci_host_cb =
+  *
+  * Description:
+  *   If the controller could send HCI command will callback this function.
++ *   Wake up any threads waiting to send.
+  *
+  * Input Parameters:
+  *   None
+@@ -113,6 +124,11 @@ static esp_vhci_host_callback_t vhci_host_cb =
+ 
+ static void esp32s3_ble_send_ready(void)
+ {
++  struct esp32s3_ble_priv_s *priv = &g_ble_priv;
++
++  /* Wake up any threads waiting to send */
++
++  nxsem_post(&priv->send_sem);
+ }
+ 
+ /****************************************************************************
+@@ -137,6 +153,8 @@ static int esp32s3_ble_recv_cb(uint8_t *data, uint16_t len)
+   enum bt_buf_type_e type;
+   struct esp32s3_ble_priv_s *priv = &g_ble_priv;
+ 
++  wlinfo("esp32s3_ble_recv_cb: len=%u hdr=0x%02x\n", len, data[0]);
++
+   switch (data[0])
+     {
+       case H4_EVT:
+@@ -149,6 +167,7 @@ static int esp32s3_ble_recv_cb(uint8_t *data, uint16_t len)
+         type = BT_ISO_IN;
+         break;
+       default:
++        wlerr("esp32s3_ble_recv_cb: invalid type 0x%02x\n", data[0]);
+         valid = false;
+         break;
+     }
+@@ -194,7 +213,11 @@ static int esp32s3_ble_send(struct bt_driver_s *drv,
+                             enum bt_buf_type_e type,
+                             void *data, size_t len)
+ {
++  struct esp32s3_ble_priv_s *priv = &g_ble_priv;
+   uint8_t *hdr = (uint8_t *)data - drv->head_reserve;
++  int retries = 0;
++
++  wlinfo("esp32s3_ble_send: type=%d len=%zu\n", type, len);
+ 
+   if ((len + H4_HEADER_SIZE) > BLE_BUF_SIZE)
+     {
+@@ -218,11 +241,26 @@ static int esp32s3_ble_send(struct bt_driver_s *drv,
+       return -EINVAL;
+     }
+ 
+-  if (esp32s3_vhci_host_check_send_available())
++  /* Wait until VHCI is ready to accept the packet */
++
++  while (!esp32s3_vhci_host_check_send_available())
+     {
+-      esp32s3_vhci_host_send_packet(hdr, len + drv->head_reserve);
++      if (++retries > BLE_SEND_MAX_RETRIES)
++        {
++          wlerr("ERROR: VHCI send not available after %d retries\n", retries);
++          return -ETIMEDOUT;
++        }
++
++      wlinfo("esp32s3_ble_send: VHCI not ready, retry %d\n", retries);
++
++      /* Wait for the send_ready callback with timeout */
++
++      nxsem_tickwait(&priv->send_sem, MSEC2TICK(BLE_SEND_TIMEOUT_MS));
+     }
+ 
++  wlinfo("esp32s3_ble_send: sending packet\n");
++  esp32s3_vhci_host_send_packet(hdr, len + drv->head_reserve);
++
+   return len;
+ }
+ 
+@@ -285,6 +323,10 @@ int esp32s3_ble_initialize(void)
+ {
+   int ret;
+ 
++  /* Initialize the send semaphore */
++
++  nxsem_init(&g_ble_priv.send_sem, 0, 0);
++
+   ret = esp32s3_bt_controller_init();
+   if (ret)
+     {
+diff --git a/wireless/bluetooth/bt_hcicore.c b/wireless/bluetooth/bt_hcicore.c
+index 91df9b8543..7c30e985ad 100644
+--- a/wireless/bluetooth/bt_hcicore.c
++++ b/wireless/bluetooth/bt_hcicore.c
+@@ -2079,6 +2079,16 @@ int bt_start_advertising(uint8_t type, FAR const struct bt_eir_s *ad,
+   FAR struct bt_hci_cp_le_set_adv_parameters_s *set_param;
+   int i;
+ 
++  /* If advertising is already enabled, stop it first.
++   * We cannot change advertising parameters while advertising is active.
++   */
++
++  if (g_btdev.adv_enable)
++    {
++      wlinfo("Stopping existing advertising before restart\n");
++      bt_stop_advertising();
++    }
++
+   if (ad == NULL)
+     {
+       goto send_scan_rsp;
+@@ -2144,6 +2154,10 @@ send_scan_rsp:
+   bt_hci_cmd_send(BT_HCI_OP_LE_SET_SCAN_RSP_DATA, buf);
+ 
+ send_set_param:
++  /* Use public address for advertising (type 0x00).
++   * ESP32S3 may not support random address advertising.
++   */
++
+   buf = bt_hci_cmd_create(BT_HCI_OP_LE_SET_ADV_PARAMETERS,
+                           sizeof(*set_param));
+   if (buf == NULL)
+@@ -2155,9 +2169,10 @@ send_set_param:
+   set_param = bt_buf_extend(buf, sizeof(*set_param));
+ 
+   memset(set_param, 0, sizeof(*set_param));
+-  set_param->min_interval = BT_HOST2LE16(300);
+-  set_param->max_interval = BT_HOST2LE16(300);
++  set_param->min_interval = BT_HOST2LE16(160);  /* 100ms */
++  set_param->max_interval = BT_HOST2LE16(320);  /* 200ms */
+   set_param->type         = type;
++  set_param->own_addr_type = 0x00;  /* Use public address */
+   set_param->channel_map  = 0x07;
+ 
+   bt_hci_cmd_send(BT_HCI_OP_LE_SET_ADV_PARAMETERS, buf);
+diff --git a/wireless/bluetooth/bt_services.c b/wireless/bluetooth/bt_services.c
+index 0041e31d85..a76ead9ecd 100644
+--- a/wireless/bluetooth/bt_services.c
++++ b/wireless/bluetooth/bt_services.c
+@@ -142,6 +142,11 @@ static const struct bt_eir_s g_ad[] =
+       BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR
+     },
+   },
++  {
++    .len  = 6,  /* 1 (type) + 5 (NuttX) */
++    .type = BT_EIR_NAME_COMPLETE,
++    .data = "NuttX",
++  },
+   {
+     .len  = 0,
+     .type = 0,
+@@ -152,9 +157,9 @@ static const struct bt_eir_s g_ad[] =
+ static const struct bt_eir_s g_sd[] =
+ {
+   {
+-    .len  = 16,
++    .len  = 6,  /* 1 (type) + 5 (NuttX) */
+     .type = BT_EIR_NAME_COMPLETE,
+-    .data = CONFIG_DEVICE_LOCAL_NAME,
++    .data = "NuttX",
+   },
+   {
+     .len  = 0,

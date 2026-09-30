@@ -35,6 +35,8 @@ selected app + platform into explicit arguments for
 The common shell backend is not the developer-facing build system. It owns the
 steps Cargo cannot perform itself: NuttX/Kconfig configuration, prepared std
 integration, ABI checks, NuttX Make/final linking and image generation.
+The exact Apache source pins and the build-time NuttX, NuttX-apps, and Rust
+library patchsets are documented in [upstream-patchsets](../../docs/upstream-patchsets.md).
 
 `profiles/` contains older focused NuttX configuration recipes used by the
 core-only simulator path. `qualification/` supplies NuttX application
