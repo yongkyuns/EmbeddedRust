@@ -1,0 +1,20 @@
+{
+  "repository": "eclipse-threadx/threadx",
+  "commit": "730b61874bc5cf40768987605ae5187fde0fa1e2",
+  "directory": "utility/benchmarks/thread_metric",
+  "license": "MIT; copyright notices retained in every downloaded source",
+  "report_exact_revision_verified": false,
+  "git_blob_sha1": {
+    "tm_api.h": "74ac6b11350505a2b667721a2e0a7b88e4aa38f7",
+    "tm_porting_layer.h": "ec1b7a26bb7371cb435e6fdaac71024f10a2999d",
+    "thread_metric_readme.txt": "044f7ee27ff8b5a25f5bd47d0ca5589e0401eec2",
+    "tm_basic_processing_test.c": "f1c4fa228d11852628c9ce9770fe81d7195f551b",
+    "tm_cooperative_scheduling_test.c": "31d18c18229e4f7e2829577cfb87361d30203bde",
+    "tm_preemptive_scheduling_test.c": "ef3222f3bbff36c6e21c15f1476ae00aba3ddfa0",
+    "tm_memory_allocation_test.c": "fc1c40d7ef880276f5e71389ae562298c2fd8ac0",
+    "tm_message_processing_test.c": "f82da79e29557c2501dc64802b56fa8da6340c77",
+    "tm_synchronization_processing_test.c": "6fa2a187db2cd25f6dd19d86c18c1a28e5bb9768",
+    "tm_interrupt_processing_test.c": "69d156d99777a50fb5d58fba643a52d84e33d266",
+    "tm_interrupt_preemption_processing_test.c": "5b6aeec2f044fdb49378e0f009c80e6875d8a6e5"
+  }
+}

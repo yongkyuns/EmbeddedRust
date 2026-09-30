@@ -15,6 +15,7 @@ class DeploymentTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
+        (self.root / "Cargo.toml").write_text('[workspace]\nresolver = "2"\n')
         (self.root / "app/demo").mkdir(parents=True)
         self.app_manifest = self.root / "app/demo/Cargo.toml"
         self.app_manifest.write_text(
@@ -87,6 +88,24 @@ class DeploymentTests(unittest.TestCase):
     def test_provider_must_support_execution_environment(self):
         with self.assertRaisesRegex(ValueError, "does not declare execution platform browser"):
             self.validate(["demo-imu/mock"], "browser")
+
+
+    def test_nested_qualification_app_uses_enclosing_workspace(self):
+        self.app_manifest = self.root / "tests/rtos-bench/rust/Cargo.toml"
+        self.app_manifest.parent.mkdir(parents=True)
+        self.app_manifest.write_text('[package]\nname = "nested-probe"\n')
+        self.assertEqual(len(self.validate()["providers"]), 2)
+        self.app_manifest.write_text(
+            '[package]\nname = "nested-probe"\n[dependencies]\n'
+            'imu = { path = "../../../hal/imu/mock" }\n'
+        )
+        with self.assertRaisesRegex(ValueError, "selects concrete HAL implementation"):
+            self.validate()
+
+    def test_missing_workspace_fails_explicitly(self):
+        (self.root / "Cargo.toml").unlink()
+        with self.assertRaisesRegex(ValueError, "no enclosing Cargo workspace"):
+            self.validate()
 
 
 if __name__ == "__main__":

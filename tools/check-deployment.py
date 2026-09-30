@@ -21,13 +21,22 @@ def is_within(path: Path, parent: Path) -> bool:
         return False
 
 
+def workspace_root(manifest: Path) -> Path:
+    """Find the enclosing workspace, including for nested qualification apps."""
+    for directory in manifest.resolve().parents:
+        candidate = directory / "Cargo.toml"
+        if candidate.is_file() and "workspace" in load(candidate):
+            return directory
+    raise ValueError(f"no enclosing Cargo workspace for {manifest}")
+
+
 def validate(
     app_manifest: Path,
     hal_features: list[str],
     execution_platform: str,
 ) -> dict:
     app_manifest = app_manifest.resolve()
-    root = app_manifest.parents[2]
+    root = workspace_root(app_manifest)
     hal_root = root / "hal"
     app = load(app_manifest)
 
