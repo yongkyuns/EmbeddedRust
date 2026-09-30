@@ -46,6 +46,7 @@ members = [
     "tests/browser-threads",
     "tests/nuttx-std/resources",
     "tests/nuttx-std/udp",
+    "tests/nuttx-std/userled",
     "tests/rtos-bench/rust",
 ]
 default-members = [

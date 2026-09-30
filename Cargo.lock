@@ -272,6 +272,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "nxrs-std-userled"
+version = "0.1.0"
+dependencies = [
+ "nxrs-led",
+]
+
+[[package]]
 name = "nxrs-storage"
 version = "0.1.0"
 dependencies = [
