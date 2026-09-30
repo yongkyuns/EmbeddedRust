@@ -36,6 +36,7 @@ members = [
     "hal/camera/nuttx",
     "hal/support/nuttx",
     "tests/allocation-probe",
+    "tests/channel-qualification",
     "tests/portable",
     "tests/native",
     "tests/nuttx",
