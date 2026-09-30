@@ -122,7 +122,7 @@ execution and complete heap reclamation.
 
 ## Previous repeated-launch failure
 
-The [exact-head MPS2 run](https://github.com/yongkyuns/EmbeddedRust/actions/runs/36666402422)
+The [exact-head MPS2 run](https://github.com/yongkyuns/nxrs/actions/runs/36666402422)
 passes host tests but fails the strict heap gate for both apps. After warm-up,
 `std-demo` rises from 15,160 to 16,656 used bytes on the first checked launch;
 `ao-stress` rises from 19,104 to 28,384 bytes. Further launches keep growing.

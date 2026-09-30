@@ -58,8 +58,8 @@ concurrency:
 
 jobs:
   host:
-    if: github.repository == 'yongkyuns/EmbeddedRust' && github.actor == 'yongkyuns'
-    runs-on: [self-hosted, Linux, X64, EmbeddedRust, nuttx, isolated]
+    if: github.repository == 'yongkyuns/nxrs' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
     timeout-minutes: 15
     permissions:
       contents: read
@@ -203,12 +203,12 @@ jobs:
 
   arm-firmware:
     needs: host
-    if: github.repository == 'yongkyuns/EmbeddedRust' && github.actor == 'yongkyuns'
+    if: github.repository == 'yongkyuns/nxrs' && github.actor == 'yongkyuns'
     strategy:
       fail-fast: false
       matrix:
         app: [std-demo, ao-stress]
-    runs-on: [self-hosted, Linux, X64, EmbeddedRust, nuttx, isolated]
+    runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
     timeout-minutes: 35
     steps:
       - name: Verify isolated Linux runner

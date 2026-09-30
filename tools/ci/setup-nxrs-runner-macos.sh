@@ -12,7 +12,8 @@ set -euo pipefail
 
 REPO="${NXRS_REPO:-yongkyuns/nxrs}"
 VM="${NXRS_RUNNER_VM:-nxrs-ci}"
-RUNNER_NAME="${NXRS_RUNNER_NAME:-yongkyuns-mac-nxrs-vm}"
+RUNNER_NAME="${NXRS_RUNNER_NAME:-yongkyuns-linux-nxrs-dedicated}"
+RUNNER_LABELS="${NXRS_RUNNER_LABELS:-nxrs,nuttx,isolated}"
 RUNNER_VERSION="2.337.0"
 
 case "$(uname -s)" in
@@ -50,9 +51,6 @@ if ! command -v limactl >/dev/null 2>&1; then
 fi
 
 gh auth status --hostname github.com >/dev/null
-echo "Obtaining a one-hour repository runner registration token through local gh auth..."
-REG_TOKEN="$(gh api --method POST "repos/$REPO/actions/runners/registration-token" --jq .token)"
-test -n "$REG_TOKEN"
 
 if limactl list 2>/dev/null | awk 'NR > 1 {print $1}' | grep -qx "$VM"; then
   echo "Using existing Lima VM: $VM"
@@ -71,6 +69,10 @@ if limactl shell "$VM" sh -lc "mount | grep -F -- '$HOST_HOME'"; then
   exit 1
 fi
 
+echo "Obtaining a one-hour repository runner registration token through local gh auth..."
+REG_TOKEN="$(gh api --method POST "repos/$REPO/actions/runners/registration-token" --jq .token)"
+test -n "$REG_TOKEN"
+
 echo "Staging the short-lived registration token inside the VM..."
 printf '%s' "$REG_TOKEN" | limactl shell "$VM" sh -c '
   umask 077
@@ -78,13 +80,14 @@ printf '%s' "$REG_TOKEN" | limactl shell "$VM" sh -c '
 '
 unset REG_TOKEN
 
-limactl shell "$VM" bash -s --   "$REPO" "$RUNNER_NAME" "$RUNNER_VERSION" "$RUNNER_ARCH" "$RUNNER_SHA256" <<'GUEST'
+limactl shell "$VM" bash -s --   "$REPO" "$RUNNER_NAME" "$RUNNER_LABELS" "$RUNNER_VERSION" "$RUNNER_ARCH" "$RUNNER_SHA256" <<'GUEST'
 set -euo pipefail
 REPO="$1"
 RUNNER_NAME="$2"
-RUNNER_VERSION="$3"
-RUNNER_ARCH="$4"
-RUNNER_SHA256="$5"
+RUNNER_LABELS="$3"
+RUNNER_VERSION="$4"
+RUNNER_ARCH="$5"
+RUNNER_SHA256="$6"
 TOKEN_FILE=/tmp/nxrs-runner-registration-token
 trap 'rm -f "$TOKEN_FILE"' EXIT
 
@@ -108,7 +111,7 @@ fi
 
 if [[ ! -f .runner ]]; then
   TOKEN="$(cat "$TOKEN_FILE")"
-  ./config.sh     --unattended     --url "https://github.com/$REPO"     --token "$TOKEN"     --name "$RUNNER_NAME"     --labels "nxrs,nuttx,isolated"     --work "_work"     --replace
+  ./config.sh     --unattended     --url "https://github.com/$REPO"     --token "$TOKEN"     --name "$RUNNER_NAME"     --labels "$RUNNER_LABELS"     --work "_work"     --replace
   unset TOKEN
 else
   echo "Runner is already configured in $RUNNER_DIR"
@@ -125,7 +128,7 @@ echo
 echo "nxrs self-hosted runner is configured."
 echo "VM:       $VM"
 echo "Runner:   $RUNNER_NAME"
-echo "Labels:   self-hosted, Linux, nxrs, nuttx, isolated"
+echo "Labels:   self-hosted, Linux, $RUNNER_LABELS"
 echo
 echo "Useful commands:"
 echo "  limactl stop $VM"

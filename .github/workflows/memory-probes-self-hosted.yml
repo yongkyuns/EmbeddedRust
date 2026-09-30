@@ -34,8 +34,8 @@ concurrency:
 
 jobs:
   memory:
-    if: github.repository == 'yongkyuns/EmbeddedRust' && github.actor == 'yongkyuns'
-    runs-on: [self-hosted, Linux, X64, EmbeddedRust, nuttx, isolated]
+    if: github.repository == 'yongkyuns/nxrs' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
     timeout-minutes: 15
     steps:
       - name: Check isolated runner
