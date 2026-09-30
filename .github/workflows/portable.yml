@@ -66,7 +66,7 @@ jobs:
       - name: App-owned CLI with independently decoded disk and UDP outputs
         run: python tests/host/test-native-runner.py
       - name: Lint production crates and selected app binary
-        run: cargo clippy --locked -p nxrs-camera -p nxrs-storage -p nxrs-transport -p nxrs-camera-api -p nxrs-storage-api -p nxrs-transport-api -p nxrs-camera-native -p nxrs-storage-native -p nxrs-transport-native -p nxrs-services -p nxrs-applications --features nxrs-applications/cli,nxrs-camera/native,nxrs-storage/native,nxrs-transport/native --lib --bins -- -D warnings
+        run: cargo clippy --locked -p nxrs-camera -p nxrs-storage -p nxrs-transport -p nxrs-camera-api -p nxrs-storage-api -p nxrs-transport-api -p nxrs-camera-native -p nxrs-storage-native -p nxrs-transport-native -p nxrs-camera-service -p nxrs-recording-service -p nxrs-telemetry-service -p nxrs-applications --features nxrs-applications/cli,nxrs-camera/native,nxrs-storage/native,nxrs-transport/native --lib --bins -- -D warnings
 
   no-std:
     name: No-std Cortex-M0 compile
