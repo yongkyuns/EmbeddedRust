@@ -9,7 +9,7 @@ usage() {
 usage: build-nuttx-std-app.sh \
   --app-manifest <path> --app-package <package> --bin <bin> \
   --command <nuttx-command> --priority <n> --stack-size <bytes> \
-  --platform <name> --out <path>
+  --platform <name> --out <path> [--abi-profile active|minimal]
 EOF
 }
 
@@ -21,6 +21,7 @@ NXRS_APP_PRIORITY=
 NXRS_APP_STACKSIZE=
 NXRS_PLATFORM=
 OUT_ARG=
+NXRS_ABI_PROFILE=active
 
 while test "$#" -gt 0; do
   case "$1" in
@@ -32,6 +33,7 @@ while test "$#" -gt 0; do
     --stack-size) NXRS_APP_STACKSIZE="${2:-}"; shift 2 ;;
     --platform) NXRS_PLATFORM="${2:-}"; shift 2 ;;
     --out) OUT_ARG="${2:-}"; shift 2 ;;
+    --abi-profile) NXRS_ABI_PROFILE="${2:-}"; shift 2 ;;
     *) echo "Unknown firmware backend argument: $1" >&2; usage; exit 2 ;;
   esac
 done
@@ -54,6 +56,10 @@ test "$NXRS_APP_PRIORITY" -gt 0 && test "$NXRS_APP_STACKSIZE" -gt 0 || {
   echo "Priority and stack size must be positive integers" >&2
   exit 1
 }
+case "$NXRS_ABI_PROFILE" in
+  active|minimal) ;;
+  *) echo "Invalid ABI profile: $NXRS_ABI_PROFILE" >&2; exit 1 ;;
+esac
 
 [[ "$NXRS_APP_MANIFEST" = /* ]] || NXRS_APP_MANIFEST="$ROOT/$NXRS_APP_MANIFEST"
 test -f "$NXRS_APP_MANIFEST" || {
@@ -284,6 +290,7 @@ PY_TARGET
   ABI_ARGS=(--target-spec "$TARGET_ARG")
   cp "$TOOLS/downloads.sha256" "$OUT/downloads.sha256"
 fi
+export NXRS_APP_COMMAND NXRS_APP_PRIORITY NXRS_APP_STACKSIZE
 export CARGO_TARGET_DIR="$OUT/cargo"
 export CARGO_PROFILE_RELEASE_LTO=false
 export CARGO_PROFILE_RELEASE_STRIP=none
@@ -322,12 +329,14 @@ grep -q 'REL (Relocatable file)' "$OUT/rust-elf-header.txt"
 grep -Eq "Machine: +$NUTTX_MACHINE$" "$OUT/rust-elf-header.txt"
 "${NUTTX_CROSSDEV}nm" "$ELF" > "$OUT/rust-symbols.txt"
 grep -Eq ' T main$' "$OUT/rust-symbols.txt"
-for symbol in pthread_create pthread_join clock_gettime; do
-  grep -Eq " U $symbol$" "$OUT/rust-symbols.txt" || {
-    echo "Active std app missing expected import $symbol" >&2
-    exit 1
-  }
-done
+if test "$NXRS_ABI_PROFILE" = active; then
+  for symbol in pthread_create pthread_join clock_gettime; do
+    grep -Eq " U $symbol$" "$OUT/rust-symbols.txt" || {
+      echo "Active std app missing expected import $symbol" >&2
+      exit 1
+    }
+  done
+fi
 python3 tests/nuttx-std/check-abi.py --check-imports "$OUT/rust-symbols.txt"
 
 unset RUSTFLAGS
@@ -348,7 +357,11 @@ python3 tests/nuttx-std/check-abi.py \
   --out "$OUT" --target "$NUTTX_TARGET" "${ABI_ARGS[@]}"
 
 "${NUTTX_CROSSDEV}nm" "$OUT/nuttx/nuttx" > "$OUT/symbols.txt"
-for symbol in "${NXRS_APP_COMMAND}_main" pthread_create pthread_join clock_gettime nx_start; do
+FINAL_REQUIRED=("${NXRS_APP_COMMAND}_main" nx_start)
+if test "$NXRS_ABI_PROFILE" = active; then
+  FINAL_REQUIRED+=(pthread_create pthread_join clock_gettime)
+fi
+for symbol in "${FINAL_REQUIRED[@]}"; do
   grep -Eq " [TtWw] $symbol$" "$OUT/symbols.txt" || {
     echo "Final NuttX image missing $symbol" >&2
     exit 1
@@ -371,6 +384,7 @@ test -s "$NUTTX_IMAGE"
   echo "platform_profile=${PLATFORM_PATH#$ROOT/}"
   echo "hal_features=$HAL_FEATURES_CSV"
   echo "app_command=$NXRS_APP_COMMAND"
+  echo "abi_profile=$NXRS_ABI_PROFILE"
   echo "target=$NUTTX_TARGET"
   echo "board=$NUTTX_BOARD"
   "$RUSTC" --version --verbose
