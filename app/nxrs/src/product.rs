@@ -1,8 +1,10 @@
 use nxrs_camera::Camera;
+use nxrs_camera_service::{CameraService, CaptureProgress};
+use nxrs_recording_service::RecordingService;
 use nxrs_storage::Storage;
+use nxrs_telemetry_service::TelemetryService;
 use nxrs_transport::PacketSink;
-use nxrs_services::{CameraService, CaptureProgress, Error, RecordingService, TelemetryService};
-use crate::{Monitor, Progress, Recorder};
+use crate::{Error, Monitor, Progress, Recorder};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TickReport {
@@ -59,7 +61,7 @@ impl<C: Camera, S: Storage, T: PacketSink, const BYTES: usize, const HISTORY: us
     }
 
     pub fn poll_camera(&mut self, now_ms: u64) -> Result<CaptureProgress, Error> {
-        self.camera.poll(now_ms)
+        Ok(self.camera.poll(now_ms)?)
     }
 
     /// Process at most one unread frame for each local consumer without
@@ -89,7 +91,7 @@ impl<C: Camera, S: Storage, T: PacketSink, const BYTES: usize, const HISTORY: us
     pub fn shutdown(&mut self) -> ShutdownReport {
         self.monitor.stop();
         let recorder = self.recorder.stop(&mut self.recordings);
-        let camera = self.camera.stop();
+        let camera = self.camera.stop().map_err(Error::from);
         ShutdownReport { recorder, camera }
     }
 }

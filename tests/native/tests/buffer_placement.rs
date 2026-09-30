@@ -3,12 +3,13 @@ use std::net::UdpSocket;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use nxrs_applications::CameraProduct;
+use nxrs_applications::{CameraProduct, Error as AppError};
 use nxrs_camera_native::ReplayCamera;
 use nxrs_storage_native::{read_record, FileRecorder, StorageLimits};
 use nxrs_transport_native::UdpTransport;
 use nxrs_camera_api::{Camera, Capture, DeviceError, Format, PixelFormat};
-use nxrs_services::{CameraService, Error, Frames};
+use nxrs_camera_service::{CameraService, Error as CameraError, Frames};
+use nxrs_recording_service::Error as RecordingError;
 
 fn frame_buffer(bytes: usize) -> std::io::Result<Box<[u8]>> {
     let mut buffer = Vec::new();
@@ -54,7 +55,7 @@ fn full_sized_native_product_runs_on_a_128_kib_stack() {
             let report = product.shutdown();
             report.camera.unwrap();
             match report.recorder {
-                Err(Error::Device(DeviceError::Busy)) if Instant::now() < deadline => thread::yield_now(),
+                Err(AppError::Recording(RecordingError::Device(DeviceError::Busy))) if Instant::now() < deadline => thread::yield_now(),
                 result => { result.unwrap(); break; }
             }
         }
@@ -84,5 +85,5 @@ fn externally_placed_slices_are_validated_before_device_start() {
     drop(service);
     assert!(matches!(CameraService::<_, 4, 1, &mut [u8]>::with_buffers(
         Device, [&mut history[..]], &mut staging[..3],
-    ), Err(Error::InvalidCapacity)));
+    ), Err(CameraError::InvalidCapacity)));
 }

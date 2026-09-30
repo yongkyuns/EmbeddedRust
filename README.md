@@ -68,10 +68,13 @@ service-owned HAL resources**. The app knows only services and their connections
 it does not depend on IMU/GNSS HALs, mock providers, or concrete devices.
 
 ```sh
-bash tools/run-event-demo-mock.sh --duration-ms 2000
+cargo build --locked \
+  -p nxrs-event-demo -p nxrs-imu -p nxrs-gnss \
+  --features nxrs-imu/mock,nxrs-gnss/mock --bin event-demo
+target/debug/event-demo --duration-ms 2000
 ```
 
-The helper explicitly selects `nxrs-imu/mock` and `nxrs-gnss/mock`.
+The build explicitly selects `nxrs-imu/mock` and `nxrs-gnss/mock`.
 `ImuService::start()` and `GnssService::start()` acquire those capabilities
 internally and move the resources into owner threads. Selecting future physical
 providers does not change app/service source.
@@ -93,7 +96,10 @@ platform both instances begin at sequence 1, proving there is no shared singleto
 sensor state.
 
 ~~~sh
-bash tools/run-dual-imu-demo-mock.sh
+cargo build --locked \
+  -p nxrs-dual-imu-demo -p nxrs-imu \
+  --features nxrs-imu/mock --bin dual-imu-demo
+target/debug/dual-imu-demo
 ~~~
 
 The demo pauses one IMU while the other continues, then resumes it. CI also

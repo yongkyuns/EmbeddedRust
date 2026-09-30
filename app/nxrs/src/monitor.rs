@@ -1,5 +1,6 @@
-use nxrs_services::{Error, Frames, Telemetry};
-use crate::{reader::Reader, AppState, AppStats, Progress};
+use nxrs_camera_service::Frames;
+use nxrs_telemetry_service::Telemetry;
+use crate::{reader::Reader, AppState, AppStats, Error, Progress};
 
 /// Composes Frames + Telemetry; needs neither storage nor recorder state.
 #[derive(Default)]

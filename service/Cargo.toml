@@ -1,9 +1,0 @@
-[package]
-name = "nxrs-services"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-nxrs-camera-api = { path = "../hal/camera/api" }
-nxrs-storage-api = { path = "../hal/storage/api" }
-nxrs-transport-api = { path = "../hal/transport/api" }

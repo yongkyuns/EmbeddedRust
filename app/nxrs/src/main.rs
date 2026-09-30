@@ -6,10 +6,12 @@ use std::io;
 use std::sync::mpsc::RecvTimeoutError;
 use std::time::{Duration, Instant};
 
-use nxrs_applications::{CameraProduct, ConsumerReport};
+use nxrs_applications::{CameraProduct, ConsumerReport, Error};
 use nxrs_camera::{DeviceError, Format, PixelFormat};
+use nxrs_camera_service::Error as CameraError;
+use nxrs_recording_service::Error as RecordingError;
+use nxrs_telemetry_service::Error as TelemetryError;
 use nxrs_service_event::{bounded, EventInbox};
-use nxrs_services::Error;
 
 const FRAME_BYTES: usize = 65_536;
 const HISTORY: usize = 2;
@@ -26,19 +28,27 @@ fn frame_buffer(bytes: usize) -> io::Result<Box<[u8]>> {
     Ok(buffer.into_boxed_slice())
 }
 
-fn checked<T>(result: Result<T, Error>) -> io::Result<T> {
+fn checked<T, E: std::fmt::Debug>(result: Result<T, E>) -> io::Result<T> {
     result.map_err(|error| io::Error::other(format!("portable service: {error:?}")))
 }
 
 fn progress<T>(result: Result<T, Error>) -> io::Result<()> {
     match result {
-        Ok(_) | Err(Error::Device(DeviceError::Busy)) => Ok(()),
+        Ok(_) => Ok(()),
+        Err(error) if is_busy(&error) => Ok(()),
         Err(error) => Err(io::Error::other(format!("portable service: {error:?}"))),
     }
 }
 
 fn busy<T>(result: &Result<T, Error>) -> bool {
-    matches!(result, Err(Error::Device(DeviceError::Busy)))
+    matches!(result, Err(error) if is_busy(error))
+}
+
+fn is_busy(error: &Error) -> bool {
+    matches!(error,
+        Error::Camera(CameraError::Device(DeviceError::Busy))
+            | Error::Recording(RecordingError::Device(DeviceError::Busy))
+            | Error::Telemetry(TelemetryError::Device(DeviceError::Busy)))
 }
 
 fn consumer_busy(report: &ConsumerReport) -> bool {
@@ -216,9 +226,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             }
             match report.recorder {
                 Ok(()) => return Ok(()),
-                Err(Error::Device(DeviceError::Busy))
-                    if Instant::now() < cleanup_deadline =>
-                {
+                Err(error) if is_busy(&error) && Instant::now() < cleanup_deadline => {
                     timed_waits = timed_waits.saturating_add(1);
                     busy_retries = busy_retries.saturating_add(1);
                     let remaining = cleanup_deadline.saturating_duration_since(Instant::now());

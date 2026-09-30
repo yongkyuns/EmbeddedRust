@@ -1,5 +1,5 @@
-use nxrs_services::{Error, Frames};
-use crate::{AppState, AppStats, Progress};
+use nxrs_camera_service::Frames;
+use crate::{AppState, AppStats, Error, Progress};
 
 #[derive(Default)]
 pub(crate) struct Reader { pub(crate) state: AppState, pub(crate) sequence: u64, pub(crate) stats: AppStats }

@@ -1,6 +1,21 @@
+//! Compact frame telemetry service over a packet sink capability.
+#![no_std]
+#![forbid(unsafe_code)]
+
 use nxrs_camera_api::{Frame, PixelFormat};
-use nxrs_transport_api::PacketSink;
-use crate::{Error, SinkStats};
+use nxrs_transport_api::{DeviceError, PacketSink};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Error {
+    Device(DeviceError),
+}
+
+impl From<DeviceError> for Error {
+    fn from(value: DeviceError) -> Self { Self::Device(value) }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TelemetryStats { pub accepted: u64, pub errors: u64 }
 
 pub trait Telemetry {
     fn publish(&mut self, frame: Frame<'_>) -> Result<(), Error>;
@@ -18,11 +33,11 @@ pub fn payload_checksum(bytes: &[u8]) -> u32 {
     })
 }
 
-pub struct TelemetryService<D> { device: D, stats: SinkStats }
+pub struct TelemetryService<D> { device: D, stats: TelemetryStats }
 
 impl<D: PacketSink> TelemetryService<D> {
-    pub fn new(device: D) -> Self { Self { device, stats: SinkStats::default() } }
-    pub fn stats(&self) -> SinkStats { self.stats }
+    pub fn new(device: D) -> Self { Self { device, stats: TelemetryStats::default() } }
+    pub fn stats(&self) -> TelemetryStats { self.stats }
     pub fn backend(&self) -> &D { &self.device }
 }
 

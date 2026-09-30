@@ -5,7 +5,8 @@ edition.workspace = true
 
 [dependencies]
 nxrs-applications = { path = "../../app/nxrs" }
-nxrs-services = { path = "../../service" }
+nxrs-camera-service = { path = "../../service/camera" }
+nxrs-recording-service = { path = "../../service/recording" }
 nxrs-camera-api = { path = "../../hal/camera/api" }
 nxrs-storage-api = { path = "../../hal/storage/api" }
 nxrs-transport-api = { path = "../../hal/transport/api" }

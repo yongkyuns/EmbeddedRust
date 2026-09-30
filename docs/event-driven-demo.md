@@ -17,10 +17,13 @@ See [hal-platform-architecture.md](hal-platform-architecture.md).
 ## Run with mock capability providers
 
 ~~~sh
-bash tools/run-event-demo-mock.sh --duration-ms 2000
+cargo build --locked \
+  -p nxrs-event-demo -p nxrs-imu -p nxrs-gnss \
+  --features nxrs-imu/mock,nxrs-gnss/mock --bin event-demo
+target/debug/event-demo --duration-ms 2000
 ~~~
 
-The build tooling enables `nxrs-imu/mock` and `nxrs-gnss/mock`.
+The build enables `nxrs-imu/mock` and `nxrs-gnss/mock`.
 `app/event-demo` contains no mock-provider or concrete-device dependency.
 
 There is no implicit mock fallback: the capability facades compile without a
@@ -184,7 +187,10 @@ explicit instance ID is required.
 Run it with:
 
 ~~~sh
-bash tools/run-dual-imu-demo-mock.sh
+cargo build --locked \
+  -p nxrs-dual-imu-demo -p nxrs-imu \
+  --features nxrs-imu/mock --bin dual-imu-demo
+target/debug/dual-imu-demo
 ~~~
 
 The qualification gate additionally builds/runs the app without a selected IMU

@@ -61,7 +61,7 @@ def run(out):
         ('mock-wasm', 'nxrs-camera-mock', ['--lib', '--target', 'wasm32-unknown-unknown'], BASE | {'nxrs-camera-mock'}),
         ('nuttx-core', 'nxrs-camera-nuttx', ['--lib', '--target', 'thumbv6m-none-eabi'], BASE | {'nxrs-camera-nuttx', 'nxrs-nuttx-support'}),
         ('native-example', 'nxrs-camera-native', ['--example', 'replay'], BASE | {'nxrs-camera-native'}),
-        ('app-library', 'nxrs-applications', ['--lib', '--no-default-features'], BASE | {'nxrs-applications', 'nxrs-services', 'nxrs-camera', 'nxrs-storage', 'nxrs-storage-api', 'nxrs-transport', 'nxrs-transport-api'}),
+        ('app-library', 'nxrs-applications', ['--lib', '--no-default-features'], BASE | {'nxrs-applications', 'nxrs-camera-service', 'nxrs-recording-service', 'nxrs-telemetry-service', 'nxrs-camera', 'nxrs-storage', 'nxrs-storage-api', 'nxrs-transport', 'nxrs-transport-api'}),
     ]
     report = []
     for label, package, flags, expected in cases:

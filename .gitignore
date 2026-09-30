@@ -1,9 +1,14 @@
-/target
-/node_modules
+# Rust build output
+/target/
+
+# Node dependencies
+/node_modules/
+
+# Python caches and local environments
 __pycache__/
 *.py[cod]
+.venv/
+venv/
 
-# Legacy NuttX build artifacts
-legacy/platform/nuttx/.built
-legacy/platform/nuttx/.depend
-legacy/platform/nuttx/Make.dep
+# macOS metadata
+.DS_Store

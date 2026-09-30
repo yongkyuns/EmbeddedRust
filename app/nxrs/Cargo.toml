@@ -7,7 +7,9 @@ edition.workspace = true
 nxrs-camera = { path = "../../hal/camera" }
 nxrs-storage = { path = "../../hal/storage" }
 nxrs-transport = { path = "../../hal/transport" }
-nxrs-services = { path = "../../service" }
+nxrs-camera-service = { path = "../../service/camera" }
+nxrs-recording-service = { path = "../../service/recording" }
+nxrs-telemetry-service = { path = "../../service/telemetry" }
 nxrs-service-event = { path = "../../service/event", optional = true }
 
 [features]

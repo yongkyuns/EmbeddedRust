@@ -93,5 +93,6 @@ jobs:
             -p nxrs-camera-native -p nxrs-storage-native -p nxrs-transport-native \
             -p nxrs-camera-mock -p nxrs-storage-mock -p nxrs-transport-mock \
             -p nxrs-camera -p nxrs-storage -p nxrs-transport \
-            -p nxrs-services -p nxrs-applications \
+            -p nxrs-camera-service -p nxrs-recording-service -p nxrs-telemetry-service \
+            -p nxrs-applications \
             --features nxrs-applications/cli,nxrs-camera/native,nxrs-storage/native,nxrs-transport/native --lib --bins -- -D warnings

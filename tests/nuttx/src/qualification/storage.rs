@@ -3,7 +3,9 @@
 use nxrs_applications::{AppState, Progress, Recorder};
 use nxrs_storage_nuttx::FileStorage;
 use nxrs_storage_api::{Capture, DeviceError, Format, Frame, PixelFormat};
-use nxrs_services::{Error, Frames, RecordingService, Recordings};
+use nxrs_applications::Error as AppError;
+use nxrs_camera_service::Frames;
+use nxrs_recording_service::{Error, RecordingService, Recordings};
 
 extern "C" {
     fn rc_test_storage_begin(case: u32) -> i32;
@@ -65,25 +67,25 @@ pub fn run() {
             assert_eq!(first, Ok(Progress::Processed { sequence: 2, skipped: 0 }));
         } else {
             let error = if case == 2 { DeviceError::Full } else { DeviceError::Io };
-            assert_eq!(first, Err(Error::Device(error)));
+            assert_eq!(first, Err(AppError::Recording(Error::Device(error))));
             assert_eq!(recorder.stats().processed, 1);
             assert_eq!(recordings.stats().accepted, 1);
         }
         if case == 8 {
-            assert_eq!(recorder.stop(&mut recordings), Err(Error::Device(DeviceError::Io)));
+            assert_eq!(recorder.stop(&mut recordings), Err(AppError::Recording(Error::Device(DeviceError::Io))));
             assert_eq!(recorder.state(), AppState::Stopping);
             source.publish(3);
             assert_eq!(recorder.step(&source, &mut recordings), Ok(Progress::Idle));
-            assert_eq!(recorder.start(&source), Err(Error::AlreadyRunning));
+            assert_eq!(recorder.start(&source), Err(AppError::AlreadyRunning));
         }
         assert_eq!(unsafe { rc_test_storage_check(1) }, 0);
 
         if case == 6 || case == 7 {
             for _ in 0..3 {
-                assert_eq!(recorder.step(&source, &mut recordings), Err(Error::Device(DeviceError::Io)));
+                assert_eq!(recorder.step(&source, &mut recordings), Err(AppError::Recording(Error::Device(DeviceError::Io))));
                 assert_eq!(recordings.flush(), Err(Error::Device(DeviceError::Io)));
             }
-            assert_eq!(recorder.stop(&mut recordings), Err(Error::Device(DeviceError::Io)));
+            assert_eq!(recorder.stop(&mut recordings), Err(AppError::Recording(Error::Device(DeviceError::Io))));
             assert_eq!(recorder.state(), AppState::Stopping);
             assert_eq!(recordings.stats().accepted, 1);
             assert_eq!(recorder.stats().processed, 1);
