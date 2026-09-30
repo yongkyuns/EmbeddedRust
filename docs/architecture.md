@@ -3,8 +3,10 @@
 The source hierarchy is app, service, hal, driver, and platform.
 
 The normative HAL/resource ownership rules are in
-[hal-platform-architecture.md](hal-platform-architecture.md). The
-[roadmap](architecture-and-roadmap.md) describes remaining migrations.
+[hal-platform-architecture.md](hal-platform-architecture.md). Physical NuttX
+device access, including the Rust `std` boundary and private device-control
+glue, is defined in [NuttX device access from Rust](nuttx-device-access.md).
+The [roadmap](architecture-and-roadmap.md) describes remaining migrations.
 
 The [concurrency and event communication design discussion](concurrency-event-communication.md)
 records a proposed revision to active ownership and inter-service communication.
@@ -290,6 +292,14 @@ qualified; sensor timestamp domains remain explicit device/data contracts.
 
 A provider implements one capability. It may use repository-owned protocol
 drivers, OS support, or pinned upstream NuttX drivers.
+
+For a physical NuttX capability, the provider itself remains the Rust
+implementation. Use qualified Rust `std` file/I/O/socket facilities directly
+for ordinary descriptor operations. Device-specific controls such as NuttX
+`ioctl` requests stay private to that provider and use only the minimum
+target-header/ABI glue required. Do not add a generic POSIX/device translation
+layer between the Rust HAL and NuttX. See
+[NuttX device access from Rust](nuttx-device-access.md).
 
 Concrete device identity belongs in the capability provider and deployment
 configuration. BMI270, LSM6DSO, u-blox model selection, I2C/SPI/UART instances,
