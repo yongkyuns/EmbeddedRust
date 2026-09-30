@@ -1,20 +1,20 @@
 [package]
-name = "rustcam-camera"
+name = "nxrs-camera"
 version.workspace = true
 edition.workspace = true
 
 [features]
 default = []
-mock = ["dep:rustcam-camera-mock"]
-native = ["dep:rustcam-camera-native"]
-nuttx = ["dep:rustcam-camera-nuttx"]
+mock = ["dep:nxrs-camera-mock"]
+native = ["dep:nxrs-camera-native"]
+nuttx = ["dep:nxrs-camera-nuttx"]
 
 [dependencies]
-rustcam-camera-api = { path = "api" }
-rustcam-camera-mock = { path = "mock", optional = true }
-rustcam-camera-native = { path = "native", optional = true }
-rustcam-camera-nuttx = { path = "nuttx", optional = true }
+nxrs-camera-api = { path = "api" }
+nxrs-camera-mock = { path = "mock", optional = true }
+nxrs-camera-native = { path = "native", optional = true }
+nxrs-camera-nuttx = { path = "nuttx", optional = true }
 
-[package.metadata.rustcam]
+[package.metadata.nxrs]
 kind = "hal-capability"
 provider-features = ["mock", "native", "nuttx"]

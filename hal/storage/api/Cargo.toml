@@ -1,11 +1,11 @@
 [package]
-name = "rustcam-storage-api"
+name = "nxrs-storage-api"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-rustcam-camera-api = { path = "../../camera/api" }
+nxrs-camera-api = { path = "../../camera/api" }
 
-[package.metadata.rustcam]
+[package.metadata.nxrs]
 mode = "frame-record-api"
 platforms = ["core", "std"]

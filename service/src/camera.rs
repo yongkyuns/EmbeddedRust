@@ -1,4 +1,4 @@
-use rustcam_camera_api::{Camera, Capture, Format, Frame};
+use nxrs_camera_api::{Camera, Capture, Format, Frame};
 use crate::Error;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

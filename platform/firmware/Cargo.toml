@@ -1,8 +1,8 @@
 [package]
-name = "rustcam-firmware"
+name = "nxrs-firmware"
 version.workspace = true
 edition.workspace = true
 
 [[bin]]
-name = "rustcam-firmware"
+name = "nxrs-firmware"
 path = "src/main.rs"

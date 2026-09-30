@@ -17,7 +17,7 @@ def checksum(payload: bytes) -> int:
 
 def main() -> None:
     values = (7, 11, 23, 37)
-    with tempfile.TemporaryDirectory(prefix="rustcam-native-e2e-") as root:
+    with tempfile.TemporaryDirectory(prefix="nxrs-native-e2e-") as root:
         root = Path(root)
         source = root / "source.gray"
         source.write_bytes(b"".join(bytes([value]) * 4 for value in values))
@@ -27,8 +27,8 @@ def main() -> None:
             receiver.settimeout(10)
             peer = f"127.0.0.1:{receiver.getsockname()[1]}"
             result = subprocess.run(
-                ["cargo", "run", "--locked", "-p", "rustcam-applications",
-                 "--features", "rustcam-applications/cli,rustcam-camera/native,rustcam-storage/native,rustcam-transport/native", "--bin", "rustcam", "--",
+                ["cargo", "run", "--locked", "-p", "nxrs-applications",
+                 "--features", "nxrs-applications/cli,nxrs-camera/native,nxrs-storage/native,nxrs-transport/native", "--bin", "nxrs", "--",
                  str(source), "2", "2", "gray8", "10", str(output), peer],
                 check=False, text=True, capture_output=True, timeout=120,
             )

@@ -6,8 +6,8 @@ non-default test binary/image. Production app/providers are unchanged.
 
 ## Run
 
-Native: `cargo +1.90.0 build --locked -p rustcam-std-udp`, then
-`python3 tests/nuttx-std/udp/run.py --native target/debug/rustcam-std-udp`.
+Native: `cargo +1.90.0 build --locked -p nxrs-std-udp`, then
+`python3 tests/nuttx-std/udp/run.py --native target/debug/nxrs-std-udp`.
 
 NuttX: install the same pinned prerequisites as the RV32 std probe, then run
 `NUTTX_STD_COMPAT_FIXES=1 bash tests/nuttx-std/build.sh udp`, followed by

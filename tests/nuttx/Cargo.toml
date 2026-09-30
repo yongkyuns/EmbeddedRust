@@ -1,5 +1,5 @@
 [package]
-name = "rustcam-nuttx-app"
+name = "nxrs-nuttx-app"
 version.workspace = true
 edition.workspace = true
 
@@ -9,20 +9,20 @@ test = false
 doctest = false
 
 [[bin]]
-name = "rustcam-nuttx-std-app"
+name = "nxrs-nuttx-std-app"
 path = "src/main.rs"
 required-features = ["std-integration"]
 
 [features]
-std-integration = ["dep:rustcam-transport-nuttx"]
+std-integration = ["dep:nxrs-transport-nuttx"]
 
 [dependencies]
-rustcam-camera-api = { path = "../../hal/camera/api" }
-rustcam-storage-api = { path = "../../hal/storage/api" }
-rustcam-transport-api = { path = "../../hal/transport/api" }
-rustcam-services = { path = "../../service" }
-rustcam-applications = { path = "../../app/rustcam" }
-rustcam-camera-nuttx = { path = "../../hal/camera/nuttx" }
-rustcam-storage-nuttx = { path = "../../hal/storage/nuttx" }
-rustcam-nuttx-support = { path = "../../hal/support/nuttx" }
-rustcam-transport-nuttx = { path = "../../hal/transport/nuttx", optional = true }
+nxrs-camera-api = { path = "../../hal/camera/api" }
+nxrs-storage-api = { path = "../../hal/storage/api" }
+nxrs-transport-api = { path = "../../hal/transport/api" }
+nxrs-services = { path = "../../service" }
+nxrs-applications = { path = "../../app/nxrs" }
+nxrs-camera-nuttx = { path = "../../hal/camera/nuttx" }
+nxrs-storage-nuttx = { path = "../../hal/storage/nuttx" }
+nxrs-nuttx-support = { path = "../../hal/support/nuttx" }
+nxrs-transport-nuttx = { path = "../../hal/transport/nuttx", optional = true }

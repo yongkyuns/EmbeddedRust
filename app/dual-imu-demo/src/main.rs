@@ -7,7 +7,7 @@
 use std::io;
 use std::time::{Duration, Instant};
 
-use rustcam_navigation_services::{
+use nxrs_navigation_services::{
     FusionConfig, FusionHandle, FusionService, ImuConfig, ImuHandle, ImuService,
 };
 

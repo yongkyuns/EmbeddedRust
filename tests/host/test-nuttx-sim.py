@@ -99,7 +99,7 @@ def qmp_quit(path):
 
 
 def run(binary, log_path, image=None, cycles=2, require_std_main=False):
-    with tempfile.TemporaryDirectory(prefix='rustcam-qmp-') as directory:
+    with tempfile.TemporaryDirectory(prefix='nxrs-qmp-') as directory:
         monitor = Path(directory) / 'control.sock'
         command = [str(binary.resolve())]
         if image is not None:
@@ -153,12 +153,12 @@ def run(binary, log_path, image=None, cycles=2, require_std_main=False):
             boot = until('nsh>', seconds=60)
             assert 'NuttShell' in boot, boot
             for cycle in range(cycles):
-                os.write(master, b'rustcam_sim\n')
+                os.write(master, b'nxrs_sim\n')
                 output = until('nsh>')
                 validate(output, require_std_main=require_std_main)
                 validate_target(output, 32 if image else 64)
                 print(f'\nPASS: NuttX invocation {cycle + 1}, target records, UDP and ABI verified')
-            os.write(master, b'rustcam_sim fail\n')
+            os.write(master, b'nxrs_sim fail\n')
             failure = until('nsh>')
             assert 'RC_NUTTX_SIM FAIL injected' in failure and PASS not in failure, failure
             try:

@@ -28,7 +28,7 @@ export RUSTC="$BROWSER_STD_SYSROOT/bin/rustc"
 export CARGO_BUILD_RUSTC="$RUSTC"
 test "$("$RUSTC" --print sysroot)" = "$BROWSER_STD_SYSROOT"
 # The pinned compiler and opt-in patch stay confined to this probe.
-"$BROWSER_STD_SYSROOT/bin/cargo" build --locked --release -p rustcam-browser-threads \
+"$BROWSER_STD_SYSROOT/bin/cargo" build --locked --release -p nxrs-browser-threads \
   --target wasm32-unknown-emscripten -Zbuild-std=std,panic_abort \
   --message-format=json-render-diagnostics | tee "$OUT/cargo-messages.jsonl"
 python3 - "$OUT/site" <<'PY'
@@ -59,8 +59,8 @@ js = wasm.with_suffix('.js')
 for path in [js, wasm, *js.parent.glob('*.worker.js')]:
     shutil.copy2(path, site / path.name)
 html = pathlib.Path('tests/browser-threads/index.html').read_text()
-assert html.count('__RUSTCAM_SCRIPT__') == 1
-(site / 'index.html').write_text(html.replace('__RUSTCAM_SCRIPT__', js.name))
+assert html.count('__NXRS_SCRIPT__') == 1
+(site / 'index.html').write_text(html.replace('__NXRS_SCRIPT__', js.name))
 def output(*args):
     return subprocess.check_output(args, text=True).strip()
 manifest = {

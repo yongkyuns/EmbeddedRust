@@ -1,5 +1,5 @@
 [package]
-name = "rustcam-simulator"
+name = "nxrs-simulator"
 version.workspace = true
 edition.workspace = true
 
@@ -7,9 +7,9 @@ edition.workspace = true
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
-rustcam-camera-api = { path = "../../hal/camera/api" }
-rustcam-camera-mock = { path = "../../hal/camera/mock" }
-rustcam-storage-mock = { path = "../../hal/storage/mock" }
-rustcam-transport-mock = { path = "../../hal/transport/mock" }
-rustcam-services = { path = "../../service" }
-rustcam-applications = { path = "../../app/rustcam" }
+nxrs-camera-api = { path = "../../hal/camera/api" }
+nxrs-camera-mock = { path = "../../hal/camera/mock" }
+nxrs-storage-mock = { path = "../../hal/storage/mock" }
+nxrs-transport-mock = { path = "../../hal/transport/mock" }
+nxrs-services = { path = "../../service" }
+nxrs-applications = { path = "../../app/nxrs" }

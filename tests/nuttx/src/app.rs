@@ -2,12 +2,12 @@
 //! the ordinary-std NuttX application. Platform runtime mechanics stay outside.
 use core::ffi::CStr;
 
-use rustcam_applications::{AppState, CameraProduct, Progress};
-use rustcam_camera_nuttx::DeviceCamera;
-use rustcam_storage_nuttx::FileStorage;
-use rustcam_camera_api::{Camera, DeviceError, Format, PixelFormat};
-use rustcam_transport_api::Transport;
-use rustcam_services::{CameraState, CaptureProgress};
+use nxrs_applications::{AppState, CameraProduct, Progress};
+use nxrs_camera_nuttx::DeviceCamera;
+use nxrs_storage_nuttx::FileStorage;
+use nxrs_camera_api::{Camera, DeviceError, Format, PixelFormat};
+use nxrs_transport_api::Transport;
+use nxrs_services::{CameraState, CaptureProgress};
 
 extern "C" {
     fn rc_sim_note(phase: u32);
@@ -32,7 +32,7 @@ where
     crate::qualification::run();
 
     let format = Format { width: 2, height: 2, pixels: PixelFormat::Gray8 };
-    let path = c"/dev/rustcam-frame";
+    let path = c"/dev/nxrs-frame";
     let mut camera = DeviceCamera::new(path);
     assert_eq!(
         camera.start(Format { width: 1, ..format }),

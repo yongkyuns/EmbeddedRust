@@ -36,9 +36,9 @@ jobs:
       - name: Clean camera-only builds and explicit unsupported-target rejection
         run: python tools/check-camera-isolation.py
       - name: Independent provider contract tests
-        run: cargo test --locked -p rustcam-camera-native -p rustcam-camera-mock
+        run: cargo test --locked -p nxrs-camera-native -p nxrs-camera-mock
       - name: Lint independent portable and native packages
-        run: cargo clippy --locked -p rustcam-hal-common -p rustcam-camera-api -p rustcam-camera-native -p rustcam-camera-mock --all-targets -- -D warnings
+        run: cargo clippy --locked -p nxrs-hal-common -p nxrs-camera-api -p nxrs-camera-native -p nxrs-camera-mock --all-targets -- -D warnings
       - uses: actions/upload-artifact@v4
         if: always()
         with:

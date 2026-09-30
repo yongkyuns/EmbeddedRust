@@ -2,8 +2,8 @@
 mod storage;
 
 use core::slice;
-use rustcam_camera_nuttx::DeviceCamera;
-use rustcam_camera_api::{Camera, DeviceError, Format, PixelFormat};
+use nxrs_camera_nuttx::DeviceCamera;
+use nxrs_camera_api::{Camera, DeviceError, Format, PixelFormat};
 
 extern "C" {
     fn rc_target_qualify() -> i32;
@@ -25,7 +25,7 @@ fn close_failure() {
     // injection to this thread. They retain no Rust pointers or references.
     assert_eq!(unsafe { rc_test_close_prepare() }, 0);
     let format = Format { width: 2, height: 2, pixels: PixelFormat::Gray8 };
-    let mut camera = DeviceCamera::new(c"/dev/rustcam-close-probe");
+    let mut camera = DeviceCamera::new(c"/dev/nxrs-close-probe");
     assert_eq!(camera.start(format), Ok(format));
     assert_eq!(unsafe { rc_test_close_arm() }, 0);
 

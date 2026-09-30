@@ -3,12 +3,12 @@ use std::net::UdpSocket;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use rustcam_applications::CameraProduct;
-use rustcam_camera_native::ReplayCamera;
-use rustcam_storage_native::{read_record, FileRecorder, StorageLimits};
-use rustcam_transport_native::UdpTransport;
-use rustcam_camera_api::{Camera, Capture, DeviceError, Format, PixelFormat};
-use rustcam_services::{CameraService, Error, Frames};
+use nxrs_applications::CameraProduct;
+use nxrs_camera_native::ReplayCamera;
+use nxrs_storage_native::{read_record, FileRecorder, StorageLimits};
+use nxrs_transport_native::UdpTransport;
+use nxrs_camera_api::{Camera, Capture, DeviceError, Format, PixelFormat};
+use nxrs_services::{CameraService, Error, Frames};
 
 fn frame_buffer(bytes: usize) -> std::io::Result<Box<[u8]>> {
     let mut buffer = Vec::new();
@@ -21,7 +21,7 @@ fn frame_buffer(bytes: usize) -> std::io::Result<Box<[u8]>> {
 
 #[test]
 fn full_sized_native_product_runs_on_a_128_kib_stack() {
-    let root = std::env::temp_dir().join(format!("rustcam-pool-{}", std::process::id()));
+    let root = std::env::temp_dir().join(format!("nxrs-pool-{}", std::process::id()));
     fs::create_dir(&root).unwrap();
     let source = root.join("source.gray");
     fs::write(&source, vec![0x51; 65_536]).unwrap();

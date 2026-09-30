@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "app/rustcam",
+    "app/nxrs",
     "app/event-demo",
     "app/dual-imu-demo",
     "app/std-demo",
@@ -42,7 +42,7 @@ members = [
     "tests/nuttx-std/udp",
 ]
 default-members = [
-    "app/rustcam",
+    "app/nxrs",
     "app/std-demo",
     "app/ao-stress",
     "service",

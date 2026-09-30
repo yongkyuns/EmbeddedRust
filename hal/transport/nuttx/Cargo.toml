@@ -1,11 +1,11 @@
 [package]
-name = "rustcam-transport-nuttx"
+name = "nxrs-transport-nuttx"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-rustcam-transport-api = { path = "../api" }
+nxrs-transport-api = { path = "../api" }
 
-[package.metadata.rustcam]
+[package.metadata.nxrs]
 mode = "nonblocking-std-udp"
 platforms = ["nuttx"]

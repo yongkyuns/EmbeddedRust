@@ -1,5 +1,5 @@
 [package]
-name = "rustcam-browser-threads"
+name = "nxrs-browser-threads"
 version.workspace = true
 edition.workspace = true
 publish = false

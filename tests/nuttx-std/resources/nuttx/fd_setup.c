@@ -62,11 +62,11 @@ int main(int argc, char **argv)
   int result = 1;
   if (!valid)
     {
-      dprintf(report, "RUSTCAM_FD_SETUP_REJECTED\n");
+      dprintf(report, "NXRS_FD_SETUP_REJECTED\n");
     }
   else
     {
-      dprintf(report, "RUSTCAM_FD_PREPARED {\"mask\":%u,\"closed\":%u}\n", mask, closed);
+      dprintf(report, "NXRS_FD_PREPARED {\"mask\":%u,\"closed\":%u}\n", mask, closed);
       /* This preserves std initialization and cleanup, once per fresh kernel. */
       result = rust_resources_probe_main(argc, argv);
       unsigned int recovered = 0;
@@ -77,7 +77,7 @@ int main(int argc, char **argv)
               ++recovered;
             }
         }
-      dprintf(report, "RUSTCAM_FD_RETURN {\"mask\":%u,\"recovered\":%u,\"rust_status\":%d}\n",
+      dprintf(report, "NXRS_FD_RETURN {\"mask\":%u,\"recovered\":%u,\"rust_status\":%d}\n",
               mask, recovered, result);
       if (recovered != closed)
         {

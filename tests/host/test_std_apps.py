@@ -1,6 +1,6 @@
 """Run real host executables and reject false-success transcripts.
 
-Build first: cargo build --locked -p rustcam-std-demo -p rustcam-ao-stress
+Build first: cargo build --locked -p nxrs-std-demo -p nxrs-ao-stress
 Run: python3 -m unittest discover -s tests/host -p test_std_apps.py -v
 """
 from __future__ import annotations

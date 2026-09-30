@@ -159,7 +159,7 @@ static const struct file_operations g_sensor_ops =
   .ioctl = sensor_ioctl,
 };
 
-#ifdef RUSTCAM_STD_ENTRY
+#ifdef NXRS_STD_ENTRY
 extern int rc_rust_std_main(int argc, char *argv[]);
 #else
 extern int rc_rust_run(const char *output, uint16_t port);
@@ -188,11 +188,11 @@ struct application
 static void *run_rust(void *argument)
 {
   struct application *app = argument;
-#ifdef RUSTCAM_STD_ENTRY
+#ifdef NXRS_STD_ENTRY
   char port[6];
   char *argv[4];
   snprintf(port, sizeof(port), "%u", (unsigned int)app->port);
-  argv[0] = (char *)"rustcam";
+  argv[0] = (char *)"nxrs";
   argv[1] = (char *)app->path;
   argv[2] = port;
   argv[3] = NULL;
@@ -269,7 +269,7 @@ int main(int argc, char *argv[])
   struct sockaddr_in address;
   struct timeval timeout = {3, 0};
   pthread_t receiver_thread;
-#ifndef RUSTCAM_STD_ENTRY
+#ifndef NXRS_STD_ENTRY
   pthread_t app_thread;
 #endif
   socklen_t address_len = sizeof(address);
@@ -288,7 +288,7 @@ int main(int argc, char *argv[])
     {
       if (mkdir("/rcam", 0700) < 0 && errno != EEXIST) goto fail;
       if (mount(NULL, "/rcam", "tmpfs", 0, NULL) < 0) goto fail;
-      if (register_driver("/dev/rustcam-frame", &g_sensor_ops, 0444, NULL) < 0) goto fail;
+      if (register_driver("/dev/nxrs-frame", &g_sensor_ops, 0444, NULL) < 0) goto fail;
       initialized = 1;
     }
   memset(&receiver, 0, sizeof(receiver));
@@ -312,7 +312,7 @@ int main(int argc, char *argv[])
   app.result = -1;
   rc = pthread_create(&receiver_thread, NULL, receive_packets, &receiver);
   if (rc != 0) goto close_socket;
-#ifdef RUSTCAM_STD_ENTRY
+#ifdef NXRS_STD_ENTRY
   /* Run rustc's generated std main on the NuttX command thread. The C code
    * remains only the synthetic-device/independent-verifier harness. */
   run_rust(&app);

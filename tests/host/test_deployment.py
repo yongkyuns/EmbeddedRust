@@ -30,14 +30,14 @@ class DeploymentTests(unittest.TestCase):
             package = f"demo-{capability}-mock"
             (provider / "Cargo.toml").write_text(
                 f'[package]\nname = "{package}"\nversion = "0.1.0"\n'
-                '[package.metadata.rustcam]\nmode = "test"\nplatforms = ["std"]\n'
+                '[package.metadata.nxrs]\nmode = "test"\nplatforms = ["std"]\n'
             )
             (api / "Cargo.toml").write_text(
                 f'[package]\nname = "demo-{capability}-api"\nversion = "0.1.0"\n'
             )
             (facade / "Cargo.toml").write_text(
                 f'[package]\nname = "demo-{capability}"\nversion = "0.1.0"\n'
-                '[package.metadata.rustcam]\nkind = "hal-capability"\n'
+                '[package.metadata.nxrs]\nkind = "hal-capability"\n'
                 'provider-features = ["mock"]\n'
                 '[features]\ndefault = []\nmock = ["dep:provider"]\n'
                 '[dependencies]\n'

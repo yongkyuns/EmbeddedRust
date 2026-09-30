@@ -14,43 +14,43 @@ RUNNER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(RUNNER)
 EXPECTED = dict(messages=16, joined_workers=1, nonblocking=True, timeout=True,
                 cloned_owner=True, independent_owner=True, empty_datagram=True, rebind=True)
-PACKETS = [f'RUSTCAM_UDP_PACKET {n} 007f80ff' for n in range(16)]
+PACKETS = [f'NXRS_UDP_PACKET {n} 007f80ff' for n in range(16)]
 
 
 def verify(text, status, mode):
     lines = text.replace('\r', '').splitlines()
-    assert lines.count('RUSTCAM_UDP_ENTERED') == 1, 'missing/duplicate Rust entry'
-    assert not any(word in text for word in ('PANIC', 'panic:', 'panicked at', 'Assertion failed', 'RUSTCAM_UDP_ERROR'))
-    reports = [json.loads(line.removeprefix('RUSTCAM_UDP_REPORT '))
-               for line in lines if line.startswith('RUSTCAM_UDP_REPORT ')]
-    packets = [line for line in lines if line.startswith('RUSTCAM_UDP_PACKET ')]
+    assert lines.count('NXRS_UDP_ENTERED') == 1, 'missing/duplicate Rust entry'
+    assert not any(word in text for word in ('PANIC', 'panic:', 'panicked at', 'Assertion failed', 'NXRS_UDP_ERROR'))
+    reports = [json.loads(line.removeprefix('NXRS_UDP_REPORT '))
+               for line in lines if line.startswith('NXRS_UDP_REPORT ')]
+    packets = [line for line in lines if line.startswith('NXRS_UDP_PACKET ')]
     if mode == 'pass':
         assert reports == [EXPECTED] and packets == PACKETS, 'incomplete/wrong UDP result'
-        assert 'RUSTCAM_UDP_INJECTED_FAILURE' not in text
+        assert 'NXRS_UDP_INJECTED_FAILURE' not in text
         expected = '0'
     else:
         assert mode == 'fail' and not reports and not packets
-        assert lines.count('RUSTCAM_UDP_INJECTED_FAILURE') == 1
+        assert lines.count('NXRS_UDP_INJECTED_FAILURE') == 1
         expected = '1'
-    values = re.findall(r'^RUSTCAM_STATUS_([0-9]+)\s*$', status.replace('\r', ''), re.M)
+    values = re.findall(r'^NXRS_STATUS_([0-9]+)\s*$', status.replace('\r', ''), re.M)
     assert values == [expected], f'wrong exit status: {values}'
 
 
 def self_test():
-    good = '\n'.join(['RUSTCAM_UDP_ENTERED', *PACKETS, 'RUSTCAM_UDP_REPORT ' + json.dumps(EXPECTED)])
-    fail = 'RUSTCAM_UDP_ENTERED\nRUSTCAM_UDP_INJECTED_FAILURE'
-    verify(good, 'RUSTCAM_STATUS_0\n', 'pass')
-    verify(fail, 'RUSTCAM_STATUS_1\n', 'fail')
-    bad = [(good, 'RUSTCAM_STATUS_1', 'pass'), (fail, 'RUSTCAM_STATUS_0', 'fail'),
-           (good + '\nPANIC', 'RUSTCAM_STATUS_0', 'pass'),
-           (good + '\nRUSTCAM_UDP_ENTERED', 'RUSTCAM_STATUS_0', 'pass'),
-           (good.replace(PACKETS[0], ''), 'RUSTCAM_STATUS_0', 'pass'),
-           (good.replace('007f80ff', '00000000'), 'RUSTCAM_STATUS_0', 'pass'),
-           (good.replace('"cloned_owner": true', '"cloned_owner": false'), 'RUSTCAM_STATUS_0', 'pass'),
-           (good.replace('"empty_datagram": true', '"empty_datagram": false'), 'RUSTCAM_STATUS_0', 'pass'),
-           (good.replace('"rebind": true', '"rebind": false'), 'RUSTCAM_STATUS_0', 'pass'),
-           (good + '\nRUSTCAM_UDP_REPORT ' + json.dumps(EXPECTED), 'RUSTCAM_STATUS_0', 'pass'),
-           (good, 'RUSTCAM_STATUS_1', 'fail')]
+    good = '\n'.join(['NXRS_UDP_ENTERED', *PACKETS, 'NXRS_UDP_REPORT ' + json.dumps(EXPECTED)])
+    fail = 'NXRS_UDP_ENTERED\nNXRS_UDP_INJECTED_FAILURE'
+    verify(good, 'NXRS_STATUS_0\n', 'pass')
+    verify(fail, 'NXRS_STATUS_1\n', 'fail')
+    bad = [(good, 'NXRS_STATUS_1', 'pass'), (fail, 'NXRS_STATUS_0', 'fail'),
+           (good + '\nPANIC', 'NXRS_STATUS_0', 'pass'),
+           (good + '\nNXRS_UDP_ENTERED', 'NXRS_STATUS_0', 'pass'),
+           (good.replace(PACKETS[0], ''), 'NXRS_STATUS_0', 'pass'),
+           (good.replace('007f80ff', '00000000'), 'NXRS_STATUS_0', 'pass'),
+           (good.replace('"cloned_owner": true', '"cloned_owner": false'), 'NXRS_STATUS_0', 'pass'),
+           (good.replace('"empty_datagram": true', '"empty_datagram": false'), 'NXRS_STATUS_0', 'pass'),
+           (good.replace('"rebind": true', '"rebind": false'), 'NXRS_STATUS_0', 'pass'),
+           (good + '\nNXRS_UDP_REPORT ' + json.dumps(EXPECTED), 'NXRS_STATUS_0', 'pass'),
+           (good, 'NXRS_STATUS_1', 'fail')]
     for args in bad:
         try:
             verify(*args)
@@ -68,7 +68,7 @@ def run(args):
             result = subprocess.run([str(args.native.resolve()), mode], capture_output=True, text=True, timeout=30)
             (args.output / f'native-{index}-{mode}.log').write_text(result.stdout + result.stderr)
             assert result.returncode == (0 if mode == 'pass' else 7), 'wrong native exit code'
-            verify(result.stdout + result.stderr, 'RUSTCAM_STATUS_' + ('0' if result.returncode == 0 else '1'), mode)
+            verify(result.stdout + result.stderr, 'NXRS_STATUS_' + ('0' if result.returncode == 0 else '1'), mode)
         print('PASS: native UDP and deliberate exit 7')
     else:
         # Require socket and baseline ABI evidence for this exact image/config.

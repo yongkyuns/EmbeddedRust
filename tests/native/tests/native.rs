@@ -5,14 +5,14 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use rustcam_applications::CameraProduct;
-use rustcam_camera_native::ReplayCamera;
-use rustcam_storage_native::{read_record, FileRecorder, StorageLimits};
-use rustcam_transport_native::UdpTransport;
-use rustcam_camera_api::{Camera, Capture, DeviceError, Format, Frame, PixelFormat};
-use rustcam_storage_api::Storage;
-use rustcam_transport_api::Transport;
-use rustcam_services::Error;
+use nxrs_applications::CameraProduct;
+use nxrs_camera_native::ReplayCamera;
+use nxrs_storage_native::{read_record, FileRecorder, StorageLimits};
+use nxrs_transport_native::UdpTransport;
+use nxrs_camera_api::{Camera, Capture, DeviceError, Format, Frame, PixelFormat};
+use nxrs_storage_api::Storage;
+use nxrs_transport_api::Transport;
+use nxrs_services::Error;
 
 const FORMAT: Format = Format { width: 2, height: 2, pixels: PixelFormat::Gray8 };
 static NEXT: AtomicU64 = AtomicU64::new(0);
@@ -21,7 +21,7 @@ struct Temp(PathBuf);
 impl Temp {
     fn new() -> Self {
         loop {
-            let path = std::env::temp_dir().join(format!("rustcam-native-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
+            let path = std::env::temp_dir().join(format!("nxrs-native-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
             match fs::create_dir(&path) {
                 Ok(()) => return Self(path),
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,

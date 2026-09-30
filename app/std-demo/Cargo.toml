@@ -1,9 +1,9 @@
 [package]
-name = "rustcam-std-demo"
+name = "nxrs-std-demo"
 version.workspace = true
 edition.workspace = true
 
-[package.metadata.rustcam.firmware]
+[package.metadata.nxrs.firmware]
 bin = "std-demo"
 command = "std_demo"
 priority = 100
@@ -14,7 +14,7 @@ stack-size = 65536
 memory-probe = []
 
 [dev-dependencies]
-rustcam-allocation-probe = { path = "../../tests/allocation-probe" }
+nxrs-allocation-probe = { path = "../../tests/allocation-probe" }
 
 [[bin]]
 name = "std-demo"

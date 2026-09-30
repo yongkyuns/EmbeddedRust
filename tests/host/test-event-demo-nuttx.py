@@ -65,7 +65,7 @@ def qmp_quit(path: Path) -> None:
 
 
 def run(qemu: Path, image: Path, log_path: Path, machine: str) -> None:
-    with tempfile.TemporaryDirectory(prefix="rustcam-event-demo-qmp-") as directory:
+    with tempfile.TemporaryDirectory(prefix="nxrs-event-demo-qmp-") as directory:
         monitor = Path(directory) / "control.sock"
         debug_port = None
         if machine == "mps2-an521":

@@ -1,5 +1,5 @@
-use rustcam_camera_api::{Frame, PixelFormat};
-use rustcam_transport_api::PacketSink;
+use nxrs_camera_api::{Frame, PixelFormat};
+use nxrs_transport_api::PacketSink;
 use crate::{Error, SinkStats};
 
 pub trait Telemetry {

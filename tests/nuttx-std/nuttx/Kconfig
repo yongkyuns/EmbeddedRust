@@ -1,4 +1,4 @@
-config EXAMPLES_RUSTCAM_STD
-	bool "Rustcam ordinary Rust main/std qualification"
+config EXAMPLES_NXRS_STD
+	bool "Nxrs ordinary Rust main/std qualification"
 	default n
 	depends on BUILD_FLAT && !DISABLE_PTHREAD

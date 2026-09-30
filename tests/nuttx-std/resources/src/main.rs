@@ -62,12 +62,12 @@ fn thread_failure() {
 }
 
 fn resources() {
-    println!("RUSTCAM_RESOURCE_MAIN resources");
+    println!("NXRS_RESOURCE_MAIN resources");
     let counts = [heap_pressure(), heap_pressure()];
     for _ in 0..3 {
         thread_failure();
     }
-    println!("RUSTCAM_RESOURCE_REPORT {{\"heap_failures\":2,\"heap_recoveries\":2,\"held_chunks\":[{},{}],\"chunk_bytes\":{CHUNK},\"spawn_failures\":3,\"spawn_recoveries\":3,\"oversized_started\":false}}", counts[0], counts[1]);
+    println!("NXRS_RESOURCE_REPORT {{\"heap_failures\":2,\"heap_recoveries\":2,\"held_chunks\":[{},{}],\"chunk_bytes\":{CHUNK},\"spawn_failures\":3,\"spawn_recoveries\":3,\"oversized_started\":false}}", counts[0], counts[1]);
 }
 
 fn descriptors(mask: u8) {
@@ -90,8 +90,8 @@ fn descriptors(mask: u8) {
     drop(fresh);
     // Target-specific diagnostics only, opened AFTER testing descriptor recovery.
     let mut console = OpenOptions::new().write(true).open("/dev/console").unwrap();
-    writeln!(console, "RUSTCAM_RESOURCE_MAIN fds").unwrap();
-    writeln!(console, "RUSTCAM_FD_RUST {{\"mask\":{mask},\"fresh_fd\":{fd}}}").unwrap();
+    writeln!(console, "NXRS_RESOURCE_MAIN fds").unwrap();
+    writeln!(console, "NXRS_FD_RUST {{\"mask\":{mask},\"fresh_fd\":{fd}}}").unwrap();
 }
 
 fn main() {

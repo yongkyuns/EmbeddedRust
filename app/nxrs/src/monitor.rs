@@ -1,4 +1,4 @@
-use rustcam_services::{Error, Frames, Telemetry};
+use nxrs_services::{Error, Frames, Telemetry};
 use crate::{reader::Reader, AppState, AppStats, Progress};
 
 /// Composes Frames + Telemetry; needs neither storage nor recorder state.

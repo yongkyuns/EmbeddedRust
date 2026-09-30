@@ -1,11 +1,11 @@
 [package]
-name = "rustcam-transport-mock"
+name = "nxrs-transport-mock"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-rustcam-transport-api = { path = "../api" }
+nxrs-transport-api = { path = "../api" }
 
-[package.metadata.rustcam]
+[package.metadata.nxrs]
 mode = "mock"
 platforms = ["std", "wasm32-unknown-unknown"]

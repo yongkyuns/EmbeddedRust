@@ -15,11 +15,11 @@ function print(line) {
   line = String(line);
   q.lines.push(line);
   document.getElementById("output").textContent += line + "\n";
-  if (line === "RUSTCAM_MAIN_ENTERED") q.entries++;
-  if (line === "RUSTCAM_CPU_BEGIN") q.phase = "cpu";
-  if (line === "RUSTCAM_CPU_END") q.phase = "running";
-  if (line.startsWith("RUSTCAM_THREAD_REPORT ")) {
-    try { q.reports.push(JSON.parse(line.slice("RUSTCAM_THREAD_REPORT ".length))); }
+  if (line === "NXRS_MAIN_ENTERED") q.entries++;
+  if (line === "NXRS_CPU_BEGIN") q.phase = "cpu";
+  if (line === "NXRS_CPU_END") q.phase = "running";
+  if (line.startsWith("NXRS_THREAD_REPORT ")) {
+    try { q.reports.push(JSON.parse(line.slice("NXRS_THREAD_REPORT ".length))); }
     catch (e) { q.errors.push(String(e)); }
   }
 }
@@ -37,7 +37,7 @@ if (!q.isolated || !q.sharedMemory) {
   q.done = true;
 } else {
   const script = document.createElement("script");
-  script.src = "__RUSTCAM_SCRIPT__";
+  script.src = "__NXRS_SCRIPT__";
   script.onerror = () => { q.errors.push("module load failed"); q.done = true; };
   document.body.appendChild(script);
 }

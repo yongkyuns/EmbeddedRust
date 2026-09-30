@@ -20,7 +20,7 @@ See [hal-platform-architecture.md](hal-platform-architecture.md).
 bash tools/run-event-demo-mock.sh --duration-ms 2000
 ~~~
 
-The build tooling enables `rustcam-imu/mock` and `rustcam-gnss/mock`.
+The build tooling enables `nxrs-imu/mock` and `nxrs-gnss/mock`.
 `app/event-demo` contains no mock-provider or concrete-device dependency.
 
 There is no implicit mock fallback: the capability facades compile without a
@@ -137,12 +137,12 @@ The narrow capability contracts remain no_std:
 - hal/imu/api
 - hal/gnss/api
 
-The public `rustcam-imu` and `rustcam-gnss` facades own provider selection.
+The public `nxrs-imu` and `nxrs-gnss` facades own provider selection.
 For the current qualification build:
 
 ~~~text
-rustcam-imu/mock   -> SyntheticImu
-rustcam-gnss/mock  -> SyntheticGnss
+nxrs-imu/mock   -> SyntheticImu
+nxrs-gnss/mock  -> SyntheticGnss
 ~~~
 
 Those concrete names exist only below their capability facade.
@@ -150,8 +150,8 @@ Those concrete names exist only below their capability facade.
 A future physical build can select physical providers independently:
 
 ~~~text
-rustcam-imu/<physical-provider>
-rustcam-gnss/<physical-provider>
+nxrs-imu/<physical-provider>
+nxrs-gnss/<physical-provider>
 ~~~
 
 Neither `app/event-demo` nor `service/navigation` should change when those
@@ -176,7 +176,7 @@ ImuService B -> FusionService B
 ~~~
 
 Both `ImuService::start()` calls independently acquire the selected IMU HAL
-capability. With `rustcam-imu/mock`, both synthetic devices start their
+capability. With `nxrs-imu/mock`, both synthetic devices start their
 sequence at 1. The app then pauses A and verifies B continues producing before
 resuming A. No global HAL object, runtime registry, provider handle table, or
 explicit instance ID is required.
@@ -190,7 +190,7 @@ bash tools/run-dual-imu-demo-mock.sh
 The qualification gate additionally builds/runs the app without a selected IMU
 provider and requires an explicit Unsupported startup failure. It also verifies
 that the IMU-only app's Cargo feature graph does not contain
-`rustcam-gnss-mock`, preventing provider selection from leaking across
+`nxrs-gnss-mock`, preventing provider selection from leaking across
 firmware images.
 
 The original `app/event-demo` remains the cross-platform proof: its unchanged
@@ -200,7 +200,7 @@ MPS2/Cortex-M33 NuttX/QEMU, and a real Pico 2 board build/ABI.
 ## Active-service std execution
 
 The navigation services intentionally use qualified Rust std facilities through
-the minimal `rustcam-service-event` transport:
+the minimal `nxrs-service-event` transport:
 
 - `std::thread`;
 - bounded `std::sync::mpsc::sync_channel`;

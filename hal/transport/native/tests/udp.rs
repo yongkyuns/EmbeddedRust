@@ -1,7 +1,7 @@
 use std::net::UdpSocket;
 use std::time::Duration;
-use rustcam_transport_api::{DeviceError, Transport};
-use rustcam_transport_native::{transport, UdpTransport};
+use nxrs_transport_api::{DeviceError, Transport};
+use nxrs_transport_native::{transport, UdpTransport};
 
 #[test]
 fn independent_sockets_preserve_packet_bytes_and_peer_ownership() {

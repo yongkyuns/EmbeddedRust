@@ -11,11 +11,11 @@ MACHINE=RISC-V
 CODE_MODEL=(-C code-model=medium)
 ESP32=0
 INTEGRATION=0
-APP_SYMBOL=EXAMPLES_RUSTCAM_STD
+APP_SYMBOL=EXAMPLES_NXRS_STD
 case "$PROFILE" in
   threads|pico2|armv8m-qemu|esp32s3)
     OUT="$ROOT/target/nuttx-std"
-    BIN=rustcam-browser-threads
+    BIN=nxrs-browser-threads
     CARGO_ARGS=(-p "$BIN")
     PROBE_SOURCE=tests/browser-threads/src/main.rs
     ENTRY=rust_std_main
@@ -45,8 +45,8 @@ case "$PROFILE" in
     ;;
   integration-esp32s3)
     OUT="$ROOT/target/nuttx-qemu"
-    BIN=rustcam-nuttx-std-app
-    CARGO_ARGS=(-p rustcam-nuttx-app --features std-integration)
+    BIN=nxrs-nuttx-std-app
+    CARGO_ARGS=(-p nxrs-nuttx-app --features std-integration)
     PROBE_SOURCE=tests/nuttx/src/main.rs
     ENTRY=rc_rust_std_main
     TARGET=xtensa-esp32s3-nuttx
@@ -56,18 +56,18 @@ case "$PROFILE" in
     CODE_MODEL=()
     ESP32=1
     INTEGRATION=1
-    APP_SYMBOL=EXAMPLES_RUSTCAM_SIM
+    APP_SYMBOL=EXAMPLES_NXRS_SIM
     ;;
   udp)
     OUT="$ROOT/target/nuttx-udp"
-    BIN=rustcam-std-udp
+    BIN=nxrs-std-udp
     CARGO_ARGS=(-p "$BIN")
     PROBE_SOURCE=tests/nuttx-std/udp/src/main.rs
     ENTRY=rust_std_main
     ;;
   resources)
     OUT="$ROOT/target/nuttx-resources"
-    BIN=rustcam-std-resources
+    BIN=nxrs-std-resources
     CARGO_ARGS=(--manifest-path "$ROOT/tests/nuttx-std/resources/Cargo.toml")
     PROBE_SOURCE=tests/nuttx-std/resources/src/main.rs
     ENTRY=rust_resources_probe_main
@@ -105,7 +105,7 @@ for pair in nuttx:nuttx nuttx-apps:apps; do
   git -C "$ROOT/external/$source_name" archive "$expected" | tar -x -C "$OUT/$destination"
 done
 if test "$INTEGRATION" = 1; then
-  APP="$OUT/apps/examples/rustcam_sim"
+  APP="$OUT/apps/examples/nxrs_sim"
   mkdir -p "$APP"
   cp "$ROOT/platform/nuttx/qualification/"* "$APP/"
   cp "$ROOT/tests/nuttx/c/"* "$APP/"
@@ -114,10 +114,10 @@ if test "$INTEGRATION" = 1; then
   cp "$ROOT/hal/support/nuttx/ffi/"{nuttx_support.c,nuttx_support.h} "$APP/"
   rm -f "$APP/transport.c" "$APP/transport.h"
 else
-  mkdir -p "$OUT/apps/examples/rustcam_std"
-  cp "$ROOT/tests/nuttx-std/nuttx/"* "$OUT/apps/examples/rustcam_std/"
+  mkdir -p "$OUT/apps/examples/nxrs_std"
+  cp "$ROOT/tests/nuttx-std/nuttx/"* "$OUT/apps/examples/nxrs_std/"
   if test "$PROFILE" = resources; then
-    cp "$ROOT/tests/nuttx-std/resources/nuttx/"* "$OUT/apps/examples/rustcam_std/"
+    cp "$ROOT/tests/nuttx-std/resources/nuttx/"* "$OUT/apps/examples/nxrs_std/"
   fi
 fi
 cd "$OUT/nuttx"
@@ -144,7 +144,7 @@ elif test "$ESP32" = 1; then
     kconfig-tweak --enable "CONFIG_$symbol"
   done
   if test "$INTEGRATION" = 1; then
-    for symbol in NETDEV_LATEINIT FS_TMPFS NET NET_IPv4 NET_UDP NET_LOOPBACK NET_SOCKOPTS       NET_UDP_WRITE_BUFFERS NET_READAHEAD SCHED_HPWORK SCHED_LPWORK EXAMPLES_RUSTCAM_PREEMPTION; do
+    for symbol in NETDEV_LATEINIT FS_TMPFS NET NET_IPv4 NET_UDP NET_LOOPBACK NET_SOCKOPTS       NET_UDP_WRITE_BUFFERS NET_READAHEAD SCHED_HPWORK SCHED_LPWORK EXAMPLES_NXRS_PREEMPTION; do
       kconfig-tweak --enable "CONFIG_$symbol"
     done
     for symbol in NET_IPv6 NET_TCP NET_USRSOCK NET_ETHERNET NSH_NETINIT NETUTILS_NETINIT       SMP DISABLE_PTHREAD ESP32S3_WIFI ESP32S3_BLE ESP32S3_SPIRAM; do
@@ -202,7 +202,7 @@ elif test "$ESP32" = 1; then
     grep -qx "$required" .config || { echo "ESP32-S3 profile mismatch: $required" >&2; exit 1; }
   done
   if test "$INTEGRATION" = 1; then
-    for required in CONFIG_FS_TMPFS=y CONFIG_NET=y CONFIG_NET_IPv4=y CONFIG_NET_UDP=y CONFIG_NET_LOOPBACK=y CONFIG_NETDEV_LATEINIT=y CONFIG_EXAMPLES_RUSTCAM_PREEMPTION=y CONFIG_NET_RECV_BUFSIZE=4096; do
+    for required in CONFIG_FS_TMPFS=y CONFIG_NET=y CONFIG_NET_IPv4=y CONFIG_NET_UDP=y CONFIG_NET_LOOPBACK=y CONFIG_NETDEV_LATEINIT=y CONFIG_EXAMPLES_NXRS_PREEMPTION=y CONFIG_NET_RECV_BUFSIZE=4096; do
       grep -qx "$required" .config || { echo "ESP32-S3 integration mismatch: $required" >&2; exit 1; }
     done
     if grep -Eq '^CONFIG_(ARCH_SIM|SMP|DISABLE_PTHREAD|NET_USRSOCK|NET_ETHERNET|NSH_NETINIT|NETUTILS_NETINIT|ESP32S3_WIFI|ESP32S3_BLE|ESP32S3_SPIRAM)=y$' .config; then
@@ -334,7 +334,7 @@ python3 tests/nuttx-std/check-abi.py --check-imports "$OUT/rust-symbols.txt"
 
 # Unset Rust-only settings before invoking NuttX's C build.
 unset RUSTFLAGS
-make -C "$OUT/nuttx" -j4 CROSSDEV="$CROSSDEV" RUSTCAM_STD_ELF="$ELF" ESPTOOL_BINDIR=.
+make -C "$OUT/nuttx" -j4 CROSSDEV="$CROSSDEV" NXRS_STD_ELF="$ELF" ESPTOOL_BINDIR=.
 
 # Compile the ABI witnesses against generated target headers before any boot.
 python3 tests/nuttx-std/check-abi.py --self-test
@@ -368,7 +368,7 @@ fi
 "${CROSSDEV}size" -A "$OUT/nuttx/nuttx" > "$OUT/image-size.txt"
 "${CROSSDEV}readelf" -h -l -A "$OUT/nuttx/nuttx" > "$OUT/image-layout.txt"
 {
-  echo "rustcam=$(git rev-parse HEAD)"
+  echo "nxrs=$(git rev-parse HEAD)"
   echo "nuttx=$(git rev-parse HEAD:external/nuttx)"
   echo "apps=$(git rev-parse HEAD:external/nuttx-apps)"
   echo "target=$TARGET"

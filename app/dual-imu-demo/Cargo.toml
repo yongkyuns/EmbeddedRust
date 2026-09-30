@@ -1,16 +1,16 @@
 [package]
-name = "rustcam-dual-imu-demo"
+name = "nxrs-dual-imu-demo"
 version.workspace = true
 edition.workspace = true
 
-[package.metadata.rustcam.firmware]
+[package.metadata.nxrs.firmware]
 bin = "dual-imu-demo"
 command = "dual_imu_demo"
 priority = 100
 stack-size = 65536
 
 [dependencies]
-rustcam-navigation-services = { path = "../../service/navigation" }
+nxrs-navigation-services = { path = "../../service/navigation" }
 
 [[bin]]
 name = "dual-imu-demo"

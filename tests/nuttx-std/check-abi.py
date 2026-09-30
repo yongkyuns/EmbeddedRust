@@ -169,13 +169,13 @@ def run(out, target=TARGET, target_spec=None):
     c_source = ('#include <nuttx/config.h>\n#include <stdint.h>\n#include <stddef.h>\n'
                 '#include <time.h>\n#include <sys/types.h>\n#include <poll.h>\n'
                 '#include <pthread.h>\n#include <errno.h>\n#include <fcntl.h>\n#include <signal.h>\n'
-                '__attribute__((section(".rustcam_abi"), used))\n'
-                'const uint32_t rustcam_abi[] = {\n'
+                '__attribute__((section(".nxrs_abi"), used))\n'
+                'const uint32_t nxrs_abi[] = {\n'
                 + ''.join(f'  (uint32_t)({c}), /* {name} */\n' for name, c, _, _ in rows) + '};\n')
     rust_source = ('#![no_std]\n#![feature(rustc_private)]\nextern crate libc;\n'
                    'use core::mem::{size_of, align_of, offset_of};\n'
-                   '#[used]\n#[no_mangle]\n#[link_section = ".rustcam_abi"]\n'
-                   f'pub static RUSTCAM_ABI: [u32; {len(rows)}] = [\n'
+                   '#[used]\n#[no_mangle]\n#[link_section = ".nxrs_abi"]\n'
+                   f'pub static NXRS_ABI: [u32; {len(rows)}] = [\n'
                    + ''.join(f'    ({r}) as u32, // {name}\n' for name, _, r, _ in rows) + '];\n')
     (out / 'abi-native.c').write_text(c_source)
     (out / 'abi-rust.rs').write_text(rust_source)
@@ -192,7 +192,7 @@ def run(out, target=TARGET, target_spec=None):
     values = {}
     for role in ('native', 'rust'):
         command = [prefix + 'objcopy', '--dump-section',
-                   f'.rustcam_abi={out}/abi-{role}.bin', str(out / f'abi-{role}.o')]
+                   f'.nxrs_abi={out}/abi-{role}.bin', str(out / f'abi-{role}.o')]
         commands.append(command)
         subprocess.run(command, check=True)
         raw = (out / f'abi-{role}.bin').read_bytes()

@@ -12,22 +12,22 @@ PLATFORMS = ROOT / "platform/nuttx/platforms"
 # An independent expected inventory, not discovery using the frontend under test.
 # Keep exact equality so missing, duplicate and unexpected apps cannot pass.
 FIRMWARE_APPS = {
-    "event-demo": ("rustcam-event-demo", "event-demo", "event_demo"),
-    "dual-imu-demo": ("rustcam-dual-imu-demo", "dual-imu-demo", "dual_imu_demo"),
-    "std-demo": ("rustcam-std-demo", "std-demo", "std_demo"),
-    "ao-stress": ("rustcam-ao-stress", "ao-stress", "ao_stress"),
+    "event-demo": ("nxrs-event-demo", "event-demo", "event_demo"),
+    "dual-imu-demo": ("nxrs-dual-imu-demo", "dual-imu-demo", "dual_imu_demo"),
+    "std-demo": ("nxrs-std-demo", "std-demo", "std_demo"),
+    "ao-stress": ("nxrs-ao-stress", "ao-stress", "ao_stress"),
 }
 PLATFORM_NAMES = {"pico2-mock", "mps2-an521-mock", "esp32s3-qemu-mock"}
 
 APP_OWNED = (
-    "RUSTCAM_DEPLOYMENT",
-    "RUSTCAM_OUT_REL",
-    "RUSTCAM_APP_MANIFEST",
-    "RUSTCAM_APP_PACKAGE",
-    "RUSTCAM_APP_BIN",
-    "RUSTCAM_APP_COMMAND",
-    "RUSTCAM_APP_PRIORITY",
-    "RUSTCAM_APP_STACKSIZE",
+    "NXRS_DEPLOYMENT",
+    "NXRS_OUT_REL",
+    "NXRS_APP_MANIFEST",
+    "NXRS_APP_PACKAGE",
+    "NXRS_APP_BIN",
+    "NXRS_APP_COMMAND",
+    "NXRS_APP_PRIORITY",
+    "NXRS_APP_STACKSIZE",
 )
 
 
@@ -48,7 +48,7 @@ class FirmwareFrontendTests(unittest.TestCase):
                 manifest = ROOT / "app" / app / "Cargo.toml"
                 data = tomllib.loads(manifest.read_text())
                 self.assertEqual(data["package"]["name"], package)
-                firmware = data["package"]["metadata"]["rustcam"]["firmware"]
+                firmware = data["package"]["metadata"]["nxrs"]["firmware"]
                 self.assertEqual(firmware["bin"], binary)
                 self.assertEqual(firmware["command"], command)
                 self.assertGreater(firmware["priority"], 0)
@@ -110,7 +110,7 @@ class FirmwareFrontendTests(unittest.TestCase):
         for args in [
             ("--app", "../event-demo", "--platform", "pico2-mock"),
             ("--app", "event-demo", "--platform", "../pico2"),
-            ("--app", "rustcam", "--platform", "pico2-mock"),
+            ("--app", "nxrs", "--platform", "pico2-mock"),
         ]:
             with self.subTest(args=args):
                 result = subprocess.run(

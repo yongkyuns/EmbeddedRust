@@ -1,7 +1,7 @@
-use rustcam_camera::Camera;
-use rustcam_storage::Storage;
-use rustcam_transport::PacketSink;
-use rustcam_services::{CameraService, CaptureProgress, Error, RecordingService, TelemetryService};
+use nxrs_camera::Camera;
+use nxrs_storage::Storage;
+use nxrs_transport::PacketSink;
+use nxrs_services::{CameraService, CaptureProgress, Error, RecordingService, TelemetryService};
 use crate::{Monitor, Progress, Recorder};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

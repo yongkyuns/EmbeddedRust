@@ -95,7 +95,7 @@ fn workspace_root() -> io::Result<PathBuf> {
         if !directory.pop() {
             return Err(io::Error::new(
                 io::ErrorKind::NotFound,
-                "could not locate Rustcam workspace root",
+                "could not locate Nxrs workspace root",
             ));
         }
     }
@@ -144,7 +144,7 @@ fn load_app(root: &Path, app: &str) -> Result<AppConfig, String> {
         };
         match section {
             "[package]" if key == "name" => package = unquote(value),
-            "[package.metadata.rustcam.firmware]" => match key {
+            "[package.metadata.nxrs.firmware]" => match key {
                 "bin" => bin = unquote(value),
                 "command" => command = unquote(value),
                 "priority" => priority = value.parse::<u32>().ok(),
@@ -158,7 +158,7 @@ fn load_app(root: &Path, app: &str) -> Result<AppConfig, String> {
     let manifest_display = manifest.display().to_string();
     let missing = |name: &str| {
         format!(
-            "{manifest_display} is missing package.metadata.rustcam.firmware.{name}"
+            "{manifest_display} is missing package.metadata.nxrs.firmware.{name}"
         )
     };
     let package = package.ok_or_else(|| format!("{manifest_display} is missing package.name"))?;

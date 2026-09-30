@@ -2,8 +2,8 @@
  * Core-only NuttX fixture declarations. Production capability bridges live
  * with camera/storage; ordinary std time needs no bridge.
  */
-#ifndef RUSTCAM_NUTTX_TEST_BRIDGE_H
-#define RUSTCAM_NUTTX_TEST_BRIDGE_H
+#ifndef NXRS_NUTTX_TEST_BRIDGE_H
+#define NXRS_NUTTX_TEST_BRIDGE_H
 #include <stddef.h>
 #include <stdint.h>
 #include "camera.h"

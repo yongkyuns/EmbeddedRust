@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location('camera_isolation', ROOT / 'tools/check-camera-isolation.py')
 EVIDENCE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(EVIDENCE)
-BASE = {'rustcam-hal-common', 'rustcam-camera-api', 'rustcam-storage-api'}
+BASE = {'nxrs-hal-common', 'nxrs-camera-api', 'nxrs-storage-api'}
 
 
 def check_records(directory):
@@ -37,11 +37,11 @@ def run(out):
     (out / 'metadata.json').write_text(json.dumps(metadata, indent=2) + '\n')
     (out / 'source.txt').write_text(subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True))
     cases = [
-        ('api-core', 'rustcam-storage-api', ['--lib', '--target', 'thumbv6m-none-eabi'], BASE),
-        ('api-wasm', 'rustcam-storage-api', ['--lib', '--target', 'wasm32-unknown-unknown'], BASE),
-        ('mock-wasm', 'rustcam-storage-mock', ['--lib', '--target', 'wasm32-unknown-unknown'], BASE | {'rustcam-storage-mock'}),
-        ('nuttx-core', 'rustcam-storage-nuttx', ['--lib', '--target', 'thumbv6m-none-eabi'], BASE | {'rustcam-storage-nuttx', 'rustcam-nuttx-support'}),
-        ('native-example', 'rustcam-storage-native', ['--example', 'record'], BASE | {'rustcam-storage-native'}),
+        ('api-core', 'nxrs-storage-api', ['--lib', '--target', 'thumbv6m-none-eabi'], BASE),
+        ('api-wasm', 'nxrs-storage-api', ['--lib', '--target', 'wasm32-unknown-unknown'], BASE),
+        ('mock-wasm', 'nxrs-storage-mock', ['--lib', '--target', 'wasm32-unknown-unknown'], BASE | {'nxrs-storage-mock'}),
+        ('nuttx-core', 'nxrs-storage-nuttx', ['--lib', '--target', 'thumbv6m-none-eabi'], BASE | {'nxrs-storage-nuttx', 'nxrs-nuttx-support'}),
+        ('native-example', 'nxrs-storage-native', ['--example', 'record'], BASE | {'nxrs-storage-native'}),
     ]
     report = []
     for label, package, flags, expected in cases:
@@ -68,8 +68,8 @@ def run(out):
         report.append({'case': label, 'compiled_packages': compiled})
         shutil.rmtree(target)
     for label, package, target, diagnostic in [
-            ('reject-native-wasm', 'rustcam-storage-native', 'wasm32-unknown-unknown', 'native storage supports'),
-            ('reject-nuttx-host', 'rustcam-storage-nuttx', None, 'NuttX descriptor support requires')]:
+            ('reject-native-wasm', 'nxrs-storage-native', 'wasm32-unknown-unknown', 'native storage supports'),
+            ('reject-nuttx-host', 'nxrs-storage-nuttx', None, 'NuttX descriptor support requires')]:
         directory = out / (label + '-target')
         command = ['cargo', 'check', '--locked', '-p', package, '--lib']
         if target:

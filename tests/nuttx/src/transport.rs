@@ -7,8 +7,8 @@
 
 use core::ffi::c_int;
 
-use rustcam_nuttx_support::{status, OwnedFd};
-use rustcam_transport_api::{DeviceError, Transport};
+use nxrs_nuttx_support::{status, OwnedFd};
+use nxrs_transport_api::{DeviceError, Transport};
 
 extern "C" {
     fn rc_nx_udp_open(address: *const u8, port: u16) -> c_int;

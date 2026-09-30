@@ -2,9 +2,9 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod mocks {
-    pub use rustcam_camera_mock::{CameraAction, MockCamera, FORMAT};
-    pub use rustcam_storage_mock::{MockStorage, StoredFrame};
-    pub use rustcam_transport_mock::MockTransport;
+    pub use nxrs_camera_mock::{CameraAction, MockCamera, FORMAT};
+    pub use nxrs_storage_mock::{MockStorage, StoredFrame};
+    pub use nxrs_transport_mock::MockTransport;
 }
 pub mod scenarios;
 

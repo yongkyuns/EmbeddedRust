@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# Bootstrap a repository-scoped rustcam GitHub Actions runner inside an
+# Bootstrap a repository-scoped nxrs GitHub Actions runner inside an
 # isolated Ubuntu 24.04 Lima VM on macOS.
 #
 # Security properties:
-# - the GitHub runner is scoped only to yongkyuns/rustcam;
+# - the GitHub runner is scoped only to yongkyuns/nxrs;
 # - the runner executes inside a Linux VM, not directly on macOS;
 # - Lima is created with --plain, so the Mac home/project filesystem is not mounted;
 # - the registration token is obtained locally with gh and is never committed;
 # - the runner service runs as the unprivileged Lima guest user.
 set -euo pipefail
 
-REPO="${RUSTCAM_REPO:-yongkyuns/rustcam}"
-VM="${RUSTCAM_RUNNER_VM:-rustcam-ci}"
-RUNNER_NAME="${RUSTCAM_RUNNER_NAME:-yongkyuns-mac-rustcam-vm}"
+REPO="${NXRS_REPO:-yongkyuns/nxrs}"
+VM="${NXRS_RUNNER_VM:-nxrs-ci}"
+RUNNER_NAME="${NXRS_RUNNER_NAME:-yongkyuns-mac-nxrs-vm}"
 RUNNER_VERSION="2.337.0"
 
 case "$(uname -s)" in
@@ -74,7 +74,7 @@ fi
 echo "Staging the short-lived registration token inside the VM..."
 printf '%s' "$REG_TOKEN" | limactl shell "$VM" sh -c '
   umask 077
-  cat > /tmp/rustcam-runner-registration-token
+  cat > /tmp/nxrs-runner-registration-token
 '
 unset REG_TOKEN
 
@@ -85,11 +85,11 @@ RUNNER_NAME="$2"
 RUNNER_VERSION="$3"
 RUNNER_ARCH="$4"
 RUNNER_SHA256="$5"
-TOKEN_FILE=/tmp/rustcam-runner-registration-token
+TOKEN_FILE=/tmp/nxrs-runner-registration-token
 trap 'rm -f "$TOKEN_FILE"' EXIT
 
 USER_NAME="$(id -un)"
-RUNNER_DIR="$HOME/actions-runner-rustcam"
+RUNNER_DIR="$HOME/actions-runner-nxrs"
 ARCHIVE="/tmp/actions-runner-${RUNNER_VERSION}.tar.gz"
 URL="https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-${RUNNER_ARCH}-${RUNNER_VERSION}.tar.gz"
 
@@ -108,7 +108,7 @@ fi
 
 if [[ ! -f .runner ]]; then
   TOKEN="$(cat "$TOKEN_FILE")"
-  ./config.sh     --unattended     --url "https://github.com/$REPO"     --token "$TOKEN"     --name "$RUNNER_NAME"     --labels "rustcam,nuttx,isolated"     --work "_work"     --replace
+  ./config.sh     --unattended     --url "https://github.com/$REPO"     --token "$TOKEN"     --name "$RUNNER_NAME"     --labels "nxrs,nuttx,isolated"     --work "_work"     --replace
   unset TOKEN
 else
   echo "Runner is already configured in $RUNNER_DIR"
@@ -122,12 +122,12 @@ sudo ./svc.sh status
 GUEST
 
 echo
-echo "rustcam self-hosted runner is configured."
+echo "nxrs self-hosted runner is configured."
 echo "VM:       $VM"
 echo "Runner:   $RUNNER_NAME"
-echo "Labels:   self-hosted, Linux, rustcam, nuttx, isolated"
+echo "Labels:   self-hosted, Linux, nxrs, nuttx, isolated"
 echo
 echo "Useful commands:"
 echo "  limactl stop $VM"
 echo "  limactl start $VM"
-echo "  limactl shell $VM -- bash -lc 'cd ~/actions-runner-rustcam && sudo ./svc.sh status'"
+echo "  limactl shell $VM -- bash -lc 'cd ~/actions-runner-nxrs && sudo ./svc.sh status'"

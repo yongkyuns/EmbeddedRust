@@ -1,10 +1,10 @@
 [package]
-name = "rustcam-hal-common"
+name = "nxrs-hal-common"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
 
-[package.metadata.rustcam]
+[package.metadata.nxrs]
 mode = "portable"
 platforms = ["core", "std"]

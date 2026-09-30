@@ -1,11 +1,11 @@
 [package]
-name = "rustcam-camera-native"
+name = "nxrs-camera-native"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-rustcam-camera-api = { path = "../api" }
+nxrs-camera-api = { path = "../api" }
 
-[package.metadata.rustcam]
+[package.metadata.nxrs]
 mode = "replay"
 platforms = ["linux", "macos", "windows"]

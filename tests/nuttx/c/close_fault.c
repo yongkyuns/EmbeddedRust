@@ -16,7 +16,7 @@
 #include <unistd.h>
 #include "bridge.h"
 
-#define PROBE_PATH "/dev/rustcam-close-probe"
+#define PROBE_PATH "/dev/nxrs-close-probe"
 
 int rc_nx_close_real(int fd);
 

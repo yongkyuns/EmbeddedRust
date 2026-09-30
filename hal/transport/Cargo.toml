@@ -1,20 +1,20 @@
 [package]
-name = "rustcam-transport"
+name = "nxrs-transport"
 version.workspace = true
 edition.workspace = true
 
 [features]
 default = []
-mock = ["dep:rustcam-transport-mock"]
-native = ["dep:rustcam-transport-native"]
-nuttx = ["dep:rustcam-transport-nuttx"]
+mock = ["dep:nxrs-transport-mock"]
+native = ["dep:nxrs-transport-native"]
+nuttx = ["dep:nxrs-transport-nuttx"]
 
 [dependencies]
-rustcam-transport-api = { path = "api" }
-rustcam-transport-mock = { path = "mock", optional = true }
-rustcam-transport-native = { path = "native", optional = true }
-rustcam-transport-nuttx = { path = "nuttx", optional = true }
+nxrs-transport-api = { path = "api" }
+nxrs-transport-mock = { path = "mock", optional = true }
+nxrs-transport-native = { path = "native", optional = true }
+nxrs-transport-nuttx = { path = "nuttx", optional = true }
 
-[package.metadata.rustcam]
+[package.metadata.nxrs]
 kind = "hal-capability"
 provider-features = ["mock", "native", "nuttx"]

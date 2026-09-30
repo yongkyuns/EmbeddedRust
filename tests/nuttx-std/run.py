@@ -23,19 +23,19 @@ def prompt_ready(data):
 
 def verify(text, status, mode):
     lines = text.replace('\r', '').splitlines()
-    assert lines.count('RUSTCAM_MAIN_ENTERED') == 1, 'main entry count'
+    assert lines.count('NXRS_MAIN_ENTERED') == 1, 'main entry count'
     assert not any(x in text for x in ('PANIC', 'panic:', 'panicked at', 'Assertion failed')), 'kernel/Rust failure'
-    reports = [json.loads(x.removeprefix('RUSTCAM_THREAD_REPORT '))
-               for x in lines if x.startswith('RUSTCAM_THREAD_REPORT ')]
+    reports = [json.loads(x.removeprefix('NXRS_THREAD_REPORT '))
+               for x in lines if x.startswith('NXRS_THREAD_REPORT ')]
     if mode == 'pass':
         assert reports == [EXPECTED], 'missing/duplicate/wrong result'
-        assert lines.count('RUSTCAM_CPU_BEGIN') == lines.count('RUSTCAM_CPU_END') == 1
-        assert 'RUSTCAM_INJECTED_FAILURE' not in text
+        assert lines.count('NXRS_CPU_BEGIN') == lines.count('NXRS_CPU_END') == 1
+        assert 'NXRS_INJECTED_FAILURE' not in text
         expected_status = '0'
     else:
-        assert not reports and lines.count('RUSTCAM_INJECTED_FAILURE') == 1
+        assert not reports and lines.count('NXRS_INJECTED_FAILURE') == 1
         expected_status = '1'  # This NSH preserves only success/failure, not exit 7.
-    values = re.findall(r'^RUSTCAM_STATUS_([0-9]+)\s*$', status.replace('\r', ''), re.M)
+    values = re.findall(r'^NXRS_STATUS_([0-9]+)\s*$', status.replace('\r', ''), re.M)
     assert values == [expected_status], f'wrong NSH result: {values}'
 
 
@@ -61,22 +61,22 @@ def qemu_command(image, debug_port, esp32_image=None, arm_mps2=False):
 
 
 def self_test():
-    text = '\n'.join(['RUSTCAM_MAIN_ENTERED', 'RUSTCAM_CPU_BEGIN', 'RUSTCAM_CPU_END',
-                      'RUSTCAM_THREAD_REPORT ' + json.dumps(EXPECTED)])
-    verify(text, 'RUSTCAM_STATUS_0\n', 'pass')
-    verify('RUSTCAM_MAIN_ENTERED\nRUSTCAM_INJECTED_FAILURE', 'RUSTCAM_STATUS_1\n', 'fail')
-    invalid = [(text.replace('RUSTCAM_MAIN_ENTERED', ''), 'RUSTCAM_STATUS_0', 'pass'),
-               (text + '\nRUSTCAM_MAIN_ENTERED', 'RUSTCAM_STATUS_0', 'pass'),
-               (text.replace('394752', '0'), 'RUSTCAM_STATUS_0', 'pass'),
-               (text + '\nRUSTCAM_THREAD_REPORT ' + json.dumps(EXPECTED), 'RUSTCAM_STATUS_0', 'pass'),
-               (text, 'RUSTCAM_STATUS_1', 'pass'),
-               (text + '\nPANIC', 'RUSTCAM_STATUS_0', 'pass'),
-               (text, 'RUSTCAM_STATUS_1', 'fail'),
-               ('RUSTCAM_MAIN_ENTERED\nRUSTCAM_INJECTED_FAILURE', 'RUSTCAM_STATUS_0', 'fail')]
+    text = '\n'.join(['NXRS_MAIN_ENTERED', 'NXRS_CPU_BEGIN', 'NXRS_CPU_END',
+                      'NXRS_THREAD_REPORT ' + json.dumps(EXPECTED)])
+    verify(text, 'NXRS_STATUS_0\n', 'pass')
+    verify('NXRS_MAIN_ENTERED\nNXRS_INJECTED_FAILURE', 'NXRS_STATUS_1\n', 'fail')
+    invalid = [(text.replace('NXRS_MAIN_ENTERED', ''), 'NXRS_STATUS_0', 'pass'),
+               (text + '\nNXRS_MAIN_ENTERED', 'NXRS_STATUS_0', 'pass'),
+               (text.replace('394752', '0'), 'NXRS_STATUS_0', 'pass'),
+               (text + '\nNXRS_THREAD_REPORT ' + json.dumps(EXPECTED), 'NXRS_STATUS_0', 'pass'),
+               (text, 'NXRS_STATUS_1', 'pass'),
+               (text + '\nPANIC', 'NXRS_STATUS_0', 'pass'),
+               (text, 'NXRS_STATUS_1', 'fail'),
+               ('NXRS_MAIN_ENTERED\nNXRS_INJECTED_FAILURE', 'NXRS_STATUS_0', 'fail')]
     for field, value in [('tls_drops', 7), ('cpu_peer_steps', 63)]:
         bad_report = dict(EXPECTED, **{field: value})
         invalid.append((text.replace(json.dumps(EXPECTED), json.dumps(bad_report)),
-                        'RUSTCAM_STATUS_0', 'pass'))
+                        'NXRS_STATUS_0', 'pass'))
     for args in invalid:
         try:
             verify(*args)
@@ -159,7 +159,7 @@ def run_cases(image, output, cases, verifier, esp32_image=None, arm_mps2=False):
             assert 'NuttShell' in banner, 'not a NuttX console'
             result['uname'] = send('uname -a')
             text = send(invocation)
-            status = send('echo RUSTCAM_STATUS_$?')
+            status = send('echo NXRS_STATUS_$?')
             verifier(text, status, mode)
             result['success'] = True
             print(f'PASS: NuttX fresh boot {index + 1}: {mode}', flush=True)

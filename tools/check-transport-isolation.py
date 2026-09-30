@@ -13,11 +13,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location('camera_isolation', ROOT / 'tools/check-camera-isolation.py')
 EVIDENCE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(EVIDENCE)
-BASE = {'rustcam-hal-common', 'rustcam-transport-api'}
-APP = BASE | {'rustcam-applications', 'rustcam-services', 'rustcam-service-event',
-              'rustcam-camera', 'rustcam-camera-api', 'rustcam-storage',
-              'rustcam-storage-api', 'rustcam-transport', 'rustcam-camera-native',
-              'rustcam-storage-native', 'rustcam-transport-native'}
+BASE = {'nxrs-hal-common', 'nxrs-transport-api'}
+APP = BASE | {'nxrs-applications', 'nxrs-services', 'nxrs-service-event',
+              'nxrs-camera', 'nxrs-camera-api', 'nxrs-storage',
+              'nxrs-storage-api', 'nxrs-transport', 'nxrs-camera-native',
+              'nxrs-storage-native', 'nxrs-transport-native'}
 
 
 def check_packets(packets):
@@ -62,11 +62,11 @@ def run(out):
     (out / 'metadata.json').write_text(json.dumps(metadata, indent=2) + '\n')
     (out / 'source.txt').write_text(subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True))
     cases = [
-        ('api-core', 'rustcam-transport-api', ['--lib', '--target', 'thumbv6m-none-eabi'], BASE),
-        ('api-wasm', 'rustcam-transport-api', ['--lib', '--target', 'wasm32-unknown-unknown'], BASE),
-        ('mock-wasm', 'rustcam-transport-mock', ['--lib', '--target', 'wasm32-unknown-unknown'], BASE | {'rustcam-transport-mock'}),
-        ('native-example', 'rustcam-transport-native', ['--example', 'send'], BASE | {'rustcam-transport-native'}),
-        ('native-app', 'rustcam-applications', ['--features', 'rustcam-applications/cli,rustcam-camera/native,rustcam-storage/native,rustcam-transport/native', '--bin', 'rustcam'], APP),
+        ('api-core', 'nxrs-transport-api', ['--lib', '--target', 'thumbv6m-none-eabi'], BASE),
+        ('api-wasm', 'nxrs-transport-api', ['--lib', '--target', 'wasm32-unknown-unknown'], BASE),
+        ('mock-wasm', 'nxrs-transport-mock', ['--lib', '--target', 'wasm32-unknown-unknown'], BASE | {'nxrs-transport-mock'}),
+        ('native-example', 'nxrs-transport-native', ['--example', 'send'], BASE | {'nxrs-transport-native'}),
+        ('native-app', 'nxrs-applications', ['--features', 'nxrs-applications/cli,nxrs-camera/native,nxrs-storage/native,nxrs-transport/native', '--bin', 'nxrs'], APP),
     ]
     report = []
     for label, package, flags, expected in cases:
@@ -88,8 +88,8 @@ def run(out):
         report.append({'case': label, 'compiled_packages': compiled})
         shutil.rmtree(target)
     for label, package, target, diagnostic in [
-            ('reject-native-wasm', 'rustcam-transport-native', 'wasm32-unknown-unknown', 'native transport supports'),
-            ('reject-nuttx-host', 'rustcam-transport-nuttx', None, 'NuttX std transport requires target_os=nuttx')]:
+            ('reject-native-wasm', 'nxrs-transport-native', 'wasm32-unknown-unknown', 'native transport supports'),
+            ('reject-nuttx-host', 'nxrs-transport-nuttx', None, 'NuttX std transport requires target_os=nuttx')]:
         directory = out / (label + '-target')
         command = ['cargo', 'check', '--locked', '-p', package, '--lib']
         if target:

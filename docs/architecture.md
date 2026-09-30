@@ -34,9 +34,9 @@ navigation services but creates two ImuService/FusionService pipelines. The two
 service-owned IMU acquisitions are independent; app instances do not require a
 global resource registry or application-defined HAL instance IDs.
 
-app/rustcam follows the same provider-hiding rule for its native replay
-profile. It acquires camera, storage and transport through `rustcam-camera`,
-`rustcam-storage`, and `rustcam-transport`, then moves those resources into
+app/nxrs follows the same provider-hiding rule for its native replay
+profile. It acquires camera, storage and transport through `nxrs-camera`,
+`nxrs-storage`, and `nxrs-transport`, then moves those resources into
 CameraService, RecordingService and TelemetryService.
 The architecture checker has no app-specific provider-selection exception.
 
@@ -228,13 +228,13 @@ boundary, not for turning every type into an actor.
 
 ## HAL: capability-local facades
 
-`hal/` is Rustcam's hardware/platform abstraction layer, but provider selection
+`hal/` is Nxrs's hardware/platform abstraction layer, but provider selection
 is not centralized in a global HAL package.
 
 Each capability owns:
 
 ~~~text
-hal/<capability>/          public facade, e.g. rustcam-imu
+hal/<capability>/          public facade, e.g. nxrs-imu
 hal/<capability>/api/      provider-independent contract
 hal/<capability>/native/   optional provider where applicable
 hal/<capability>/nuttx/    optional provider where applicable
@@ -248,18 +248,18 @@ a concrete provider for that capability.
 For example:
 
 ~~~text
-ImuService -> rustcam-imu
-                -> rustcam-imu-api
-                -> rustcam-imu-mock      # selected by build
+ImuService -> nxrs-imu
+                -> nxrs-imu-api
+                -> nxrs-imu-mock      # selected by build
 
-app/rustcam -> rustcam-camera
-                -> rustcam-camera-api
-                -> rustcam-camera-native # selected by build
+app/nxrs -> nxrs-camera
+                -> nxrs-camera-api
+                -> nxrs-camera-native # selected by build
 ~~~
 
 Provider selection is an explicit Cargo/deployment feature such as
-`rustcam-imu/mock` or `rustcam-camera/native`. There is no global
-`rustcam-hal`, no `hal/platform` package, and no giant `Hal` object.
+`nxrs-imu/mock` or `nxrs-camera/native`. There is no global
+`nxrs-hal`, no `hal/platform` package, and no giant `Hal` object.
 
 The separate `api/` package remains useful because providers depend on that
 contract. Putting provider dependencies into `api/` itself would create a
@@ -346,7 +346,7 @@ event-demo app
      |
 navigation services
      |
-rustcam-imu / rustcam-gnss
+nxrs-imu / nxrs-gnss
      |
 build-selected capability providers
 ~~~
@@ -373,7 +373,7 @@ See [event-driven-demo.md](event-driven-demo.md).
 ## Multi-app and multi-instance proof
 
 There are now two distinct ordinary application binaries using
-`rustcam-navigation-services`:
+`nxrs-navigation-services`:
 
 ~~~text
 app/event-demo       -> IMU + GNSS + fusion
@@ -385,11 +385,11 @@ app-to-app production dependencies.
 
 The dual-IMU app proves that a capability may supply more than one resource
 instance when its selected provider supports that operation: each
-`ImuService::start()` calls `rustcam_imu::open()` and owns the returned
+`ImuService::start()` calls `nxrs_imu::open()` and owns the returned
 resource for its lifetime. Pausing one service does not affect the other.
 
 Provider selection remains per firmware image. The IMU-only dual app is
-qualified without `rustcam-gnss-mock`, while the event demo may select both
+qualified without `nxrs-gnss-mock`, while the event demo may select both
 mock IMU and GNSS. Starting the dual app without an IMU provider is required to
 fail Unsupported, so no configuration leaks or implicit mock fallback hide an
 unsupported image.
@@ -401,9 +401,9 @@ profiles.
 ## Camera stack
 
 The camera/recording/telemetry stack keeps its capability-first
-camera/storage/transport split. For the native replay profile, app/rustcam now
-acquires those capabilities through rustcam-camera/rustcam-storage/
-rustcam-transport rather than naming provider packages directly, then transfers
+camera/storage/transport split. For the native replay profile, app/nxrs now
+acquires those capabilities through nxrs-camera/nxrs-storage/
+nxrs-transport rather than naming provider packages directly, then transfers
 ownership into the existing services.
 
 The services remain generic over their capability contracts; this migration does

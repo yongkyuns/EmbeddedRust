@@ -3,299 +3,299 @@
 version = 4
 
 [[package]]
-name = "rustcam-allocation-probe"
+name = "nxrs-allocation-probe"
 version = "0.1.0"
 
 [[package]]
-name = "rustcam-ao-stress"
+name = "nxrs-ao-stress"
 version = "0.1.0"
 dependencies = [
- "rustcam-allocation-probe",
- "rustcam-service-event",
+ "nxrs-allocation-probe",
+ "nxrs-service-event",
 ]
 
 [[package]]
-name = "rustcam-applications"
+name = "nxrs-applications"
 version = "0.1.0"
 dependencies = [
- "rustcam-camera",
- "rustcam-service-event",
- "rustcam-services",
- "rustcam-storage",
- "rustcam-transport",
+ "nxrs-camera",
+ "nxrs-service-event",
+ "nxrs-services",
+ "nxrs-storage",
+ "nxrs-transport",
 ]
 
 [[package]]
-name = "rustcam-browser-threads"
+name = "nxrs-browser-threads"
 version = "0.1.0"
 
 [[package]]
-name = "rustcam-camera"
+name = "nxrs-camera"
 version = "0.1.0"
 dependencies = [
- "rustcam-camera-api",
- "rustcam-camera-mock",
- "rustcam-camera-native",
- "rustcam-camera-nuttx",
+ "nxrs-camera-api",
+ "nxrs-camera-mock",
+ "nxrs-camera-native",
+ "nxrs-camera-nuttx",
 ]
 
 [[package]]
-name = "rustcam-camera-api"
+name = "nxrs-camera-api"
 version = "0.1.0"
 dependencies = [
- "rustcam-hal-common",
+ "nxrs-hal-common",
 ]
 
 [[package]]
-name = "rustcam-camera-mock"
+name = "nxrs-camera-mock"
 version = "0.1.0"
 dependencies = [
- "rustcam-camera-api",
+ "nxrs-camera-api",
 ]
 
 [[package]]
-name = "rustcam-camera-native"
+name = "nxrs-camera-native"
 version = "0.1.0"
 dependencies = [
- "rustcam-camera-api",
+ "nxrs-camera-api",
 ]
 
 [[package]]
-name = "rustcam-camera-nuttx"
+name = "nxrs-camera-nuttx"
 version = "0.1.0"
 dependencies = [
- "rustcam-camera-api",
- "rustcam-nuttx-support",
+ "nxrs-camera-api",
+ "nxrs-nuttx-support",
 ]
 
 [[package]]
-name = "rustcam-dual-imu-demo"
+name = "nxrs-dual-imu-demo"
 version = "0.1.0"
 dependencies = [
- "rustcam-navigation-services",
+ "nxrs-navigation-services",
 ]
 
 [[package]]
-name = "rustcam-event-demo"
+name = "nxrs-event-demo"
 version = "0.1.0"
 dependencies = [
- "rustcam-navigation-services",
+ "nxrs-navigation-services",
 ]
 
 [[package]]
-name = "rustcam-firmware"
+name = "nxrs-firmware"
 version = "0.1.0"
 
 [[package]]
-name = "rustcam-gnss"
+name = "nxrs-gnss"
 version = "0.1.0"
 dependencies = [
- "rustcam-gnss-api",
- "rustcam-gnss-mock",
+ "nxrs-gnss-api",
+ "nxrs-gnss-mock",
 ]
 
 [[package]]
-name = "rustcam-gnss-api"
+name = "nxrs-gnss-api"
 version = "0.1.0"
 dependencies = [
- "rustcam-hal-common",
+ "nxrs-hal-common",
 ]
 
 [[package]]
-name = "rustcam-gnss-mock"
+name = "nxrs-gnss-mock"
 version = "0.1.0"
 dependencies = [
- "rustcam-gnss-api",
+ "nxrs-gnss-api",
 ]
 
 [[package]]
-name = "rustcam-hal-common"
+name = "nxrs-hal-common"
 version = "0.1.0"
 
 [[package]]
-name = "rustcam-imu"
+name = "nxrs-imu"
 version = "0.1.0"
 dependencies = [
- "rustcam-imu-api",
- "rustcam-imu-mock",
+ "nxrs-imu-api",
+ "nxrs-imu-mock",
 ]
 
 [[package]]
-name = "rustcam-imu-api"
+name = "nxrs-imu-api"
 version = "0.1.0"
 dependencies = [
- "rustcam-hal-common",
+ "nxrs-hal-common",
 ]
 
 [[package]]
-name = "rustcam-imu-mock"
+name = "nxrs-imu-mock"
 version = "0.1.0"
 dependencies = [
- "rustcam-imu-api",
+ "nxrs-imu-api",
 ]
 
 [[package]]
-name = "rustcam-native-integration"
+name = "nxrs-native-integration"
 version = "0.1.0"
 dependencies = [
- "rustcam-applications",
- "rustcam-camera-api",
- "rustcam-camera-native",
- "rustcam-services",
- "rustcam-storage-api",
- "rustcam-storage-native",
- "rustcam-transport-api",
- "rustcam-transport-native",
+ "nxrs-applications",
+ "nxrs-camera-api",
+ "nxrs-camera-native",
+ "nxrs-services",
+ "nxrs-storage-api",
+ "nxrs-storage-native",
+ "nxrs-transport-api",
+ "nxrs-transport-native",
 ]
 
 [[package]]
-name = "rustcam-navigation-services"
+name = "nxrs-navigation-services"
 version = "0.1.0"
 dependencies = [
- "rustcam-gnss",
- "rustcam-imu",
- "rustcam-service-event",
+ "nxrs-gnss",
+ "nxrs-imu",
+ "nxrs-service-event",
 ]
 
 [[package]]
-name = "rustcam-nuttx-app"
+name = "nxrs-nuttx-app"
 version = "0.1.0"
 dependencies = [
- "rustcam-applications",
- "rustcam-camera-api",
- "rustcam-camera-nuttx",
- "rustcam-nuttx-support",
- "rustcam-services",
- "rustcam-storage-api",
- "rustcam-storage-nuttx",
- "rustcam-transport-api",
- "rustcam-transport-nuttx",
+ "nxrs-applications",
+ "nxrs-camera-api",
+ "nxrs-camera-nuttx",
+ "nxrs-nuttx-support",
+ "nxrs-services",
+ "nxrs-storage-api",
+ "nxrs-storage-nuttx",
+ "nxrs-transport-api",
+ "nxrs-transport-nuttx",
 ]
 
 [[package]]
-name = "rustcam-nuttx-support"
+name = "nxrs-nuttx-support"
 version = "0.1.0"
 dependencies = [
- "rustcam-hal-common",
+ "nxrs-hal-common",
 ]
 
 [[package]]
-name = "rustcam-service-event"
+name = "nxrs-service-event"
 version = "0.1.0"
 
 [[package]]
-name = "rustcam-services"
+name = "nxrs-services"
 version = "0.1.0"
 dependencies = [
- "rustcam-camera-api",
- "rustcam-storage-api",
- "rustcam-transport-api",
+ "nxrs-camera-api",
+ "nxrs-storage-api",
+ "nxrs-transport-api",
 ]
 
 [[package]]
-name = "rustcam-simulator"
+name = "nxrs-simulator"
 version = "0.1.0"
 dependencies = [
- "rustcam-applications",
- "rustcam-camera-api",
- "rustcam-camera-mock",
- "rustcam-services",
- "rustcam-storage-mock",
- "rustcam-transport-mock",
+ "nxrs-applications",
+ "nxrs-camera-api",
+ "nxrs-camera-mock",
+ "nxrs-services",
+ "nxrs-storage-mock",
+ "nxrs-transport-mock",
 ]
 
 [[package]]
-name = "rustcam-std-demo"
+name = "nxrs-std-demo"
 version = "0.1.0"
 dependencies = [
- "rustcam-allocation-probe",
+ "nxrs-allocation-probe",
 ]
 
 [[package]]
-name = "rustcam-std-resources"
+name = "nxrs-std-resources"
 version = "0.1.0"
 
 [[package]]
-name = "rustcam-std-udp"
+name = "nxrs-std-udp"
 version = "0.1.0"
 dependencies = [
- "rustcam-transport-api",
- "rustcam-transport-nuttx",
+ "nxrs-transport-api",
+ "nxrs-transport-nuttx",
 ]
 
 [[package]]
-name = "rustcam-storage"
+name = "nxrs-storage"
 version = "0.1.0"
 dependencies = [
- "rustcam-storage-api",
- "rustcam-storage-mock",
- "rustcam-storage-native",
- "rustcam-storage-nuttx",
+ "nxrs-storage-api",
+ "nxrs-storage-mock",
+ "nxrs-storage-native",
+ "nxrs-storage-nuttx",
 ]
 
 [[package]]
-name = "rustcam-storage-api"
+name = "nxrs-storage-api"
 version = "0.1.0"
 dependencies = [
- "rustcam-camera-api",
+ "nxrs-camera-api",
 ]
 
 [[package]]
-name = "rustcam-storage-mock"
+name = "nxrs-storage-mock"
 version = "0.1.0"
 dependencies = [
- "rustcam-storage-api",
+ "nxrs-storage-api",
 ]
 
 [[package]]
-name = "rustcam-storage-native"
+name = "nxrs-storage-native"
 version = "0.1.0"
 dependencies = [
- "rustcam-storage-api",
+ "nxrs-storage-api",
 ]
 
 [[package]]
-name = "rustcam-storage-nuttx"
+name = "nxrs-storage-nuttx"
 version = "0.1.0"
 dependencies = [
- "rustcam-nuttx-support",
- "rustcam-storage-api",
+ "nxrs-nuttx-support",
+ "nxrs-storage-api",
 ]
 
 [[package]]
-name = "rustcam-transport"
+name = "nxrs-transport"
 version = "0.1.0"
 dependencies = [
- "rustcam-transport-api",
- "rustcam-transport-mock",
- "rustcam-transport-native",
- "rustcam-transport-nuttx",
+ "nxrs-transport-api",
+ "nxrs-transport-mock",
+ "nxrs-transport-native",
+ "nxrs-transport-nuttx",
 ]
 
 [[package]]
-name = "rustcam-transport-api"
+name = "nxrs-transport-api"
 version = "0.1.0"
 dependencies = [
- "rustcam-hal-common",
+ "nxrs-hal-common",
 ]
 
 [[package]]
-name = "rustcam-transport-mock"
+name = "nxrs-transport-mock"
 version = "0.1.0"
 dependencies = [
- "rustcam-transport-api",
+ "nxrs-transport-api",
 ]
 
 [[package]]
-name = "rustcam-transport-native"
+name = "nxrs-transport-native"
 version = "0.1.0"
 dependencies = [
- "rustcam-transport-api",
+ "nxrs-transport-api",
 ]
 
 [[package]]
-name = "rustcam-transport-nuttx"
+name = "nxrs-transport-nuttx"
 version = "0.1.0"
 dependencies = [
- "rustcam-transport-api",
+ "nxrs-transport-api",
 ]

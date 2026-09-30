@@ -1,4 +1,4 @@
-# Rustcam: portable embedded architecture and roadmap
+# Nxrs: portable embedded architecture and roadmap
 
 **Revision:** 10 — product-platform selection plus qualified multi-app/multi-instance composition.
 **Updated:** September 29, 2026.
@@ -23,8 +23,8 @@ such as `start()`.
 The HAL is capability-local. Each domain such as `hal/imu`, `hal/gnss`, or
 `hal/camera` has a public facade, a provider-independent `api/` contract, and
 optional concrete provider packages. The build selects a provider on the
-capability facade (for example `rustcam-imu/mock` or
-`rustcam-camera/native`). There is no global `hal/platform` package.
+capability facade (for example `nxrs-imu/mock` or
+`nxrs-camera/native`). There is no global `hal/platform` package.
 Provider selection remains a deployment/build decision below app and service
 policy.
 
@@ -82,7 +82,7 @@ The review's main implementation gaps remain:
 - IMU/GNSS demonstrate service-owned HAL acquisition: app/event-demo creates
   services only and those services acquire their capabilities internally.
   The native camera/storage/transport profile now demonstrates the other valid
-  case: app/rustcam acquires portable HAL capabilities directly, then transfers
+  case: app/nxrs acquires portable HAL capabilities directly, then transfers
   ownership into the generic services. Neither app path names concrete provider
   packages, and the former checker exception has been removed. [R01], [R12]
 
@@ -97,14 +97,14 @@ This is the target structure, not a claim that these packages already exist:
 
 ```text
 app/
-  rustcam/
+  nxrs/
     Cargo.toml
     src/main.rs             This firmware's construction and entry
   <another-app>/            A different binary and firmware image
 service/
   <domain>/                 Reusable functionality; private modules as needed
 hal/
-  imu/                      Public rustcam-imu facade
+  imu/                      Public nxrs-imu facade
     api/                    Common contract, no backend dependencies
     nuttx/                  Physical/OS provider where implemented
     native/
@@ -160,7 +160,7 @@ a pure calculation does not need a client, request ID, and reply.
 ### Contracts and implementations
 
 Portable app/service code uses only the capability contracts/facades it needs.
-For example, navigation depends on rustcam-imu/rustcam-gnss and their
+For example, navigation depends on nxrs-imu/nxrs-gnss and their
 sample/fix contracts, but not BMI270, LSM6DSO, UART instances, mock packages, or
 camera resources. Preserve
 units, coordinate conventions, timestamps, actual negotiated settings, error
@@ -483,15 +483,15 @@ the same ownership principles only when that concrete boundary is introduced.
 ### M3a — Move concrete resources below capability-local HAL facades
 
 **Capability-local provider selection is implemented.** The former global
-`rustcam-hal` / `hal/platform` binding has been removed.
+`nxrs-hal` / `hal/platform` binding has been removed.
 
-IMU/GNSS services acquire resources from `rustcam-imu` and `rustcam-gnss`;
-deployment selects `rustcam-imu/mock` and `rustcam-gnss/mock` for the current
+IMU/GNSS services acquire resources from `nxrs-imu` and `nxrs-gnss`;
+deployment selects `nxrs-imu/mock` and `nxrs-gnss/mock` for the current
 event-demo qualification profiles. This is the preferred ownership model for
 sensor services, not a rule that apps can never use HAL facades directly.
 
-The native rustcam app acquires camera/storage/transport through
-`rustcam-camera`, `rustcam-storage`, and `rustcam-transport`. The build
+The native nxrs app acquires camera/storage/transport through
+`nxrs-camera`, `nxrs-storage`, and `nxrs-transport`. The build
 selects each native provider independently. Neither app nor service manifest
 names concrete provider packages.
 
@@ -504,7 +504,7 @@ that minimal images exclude unselected Rust/C providers and registrations.
 ### M4 — Prove multi-app, multi-instance configuration
 
 **Implemented.** `app/event-demo` and `app/dual-imu-demo` are separate
-ordinary Rust firmware binaries that both reuse `rustcam-navigation-services`
+ordinary Rust firmware binaries that both reuse `nxrs-navigation-services`
 and contain handwritten composition roots. Neither app depends on the other.
 
 The dual-IMU app creates two independent `ImuService` instances and two
@@ -516,7 +516,7 @@ without a registry, global HAL object, generated instance table, or universal
 resource resolver.
 
 Cross-image configuration is also qualified: the dual-IMU image selects only the
-mock IMU provider and is checked not to pull `rustcam-gnss-mock` from the
+mock IMU provider and is checked not to pull `nxrs-gnss-mock` from the
 event-demo image. Running it without an IMU provider must fail explicitly with
 Unsupported rather than falling back to another image's configuration or an
 implicit mock.
@@ -571,16 +571,16 @@ They are not claims that this documentation revision reran those tests. [Q01]
 identifies the separately executed browser qualification at its exact source.
 External runtime guidance is not evidence for an untested target configuration.
 
-[R01]: https://github.com/yongkyuns/rustcam/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/Cargo.toml
-[R04]: https://github.com/yongkyuns/rustcam/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/hal/api/src/lib.rs
-[R05]: https://github.com/yongkyuns/rustcam/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/service/src/camera.rs
-[R06]: https://github.com/yongkyuns/rustcam/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/app/rustcam/src/product.rs
-[R07]: https://github.com/yongkyuns/rustcam/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/platform/native/src/main.rs
-[R09]: https://github.com/yongkyuns/rustcam/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/hal/native/src/recording.rs
-[R11]: https://github.com/yongkyuns/rustcam/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/hal/nuttx/src/lib.rs
-[R12]: https://github.com/yongkyuns/rustcam/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/tools/check-architecture.py
-[R13]: https://github.com/yongkyuns/rustcam/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/docs/nuttx-sim.md
-[R14]: https://github.com/yongkyuns/rustcam/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/docs/nuttx-qemu.md
+[R01]: https://github.com/yongkyuns/nxrs/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/Cargo.toml
+[R04]: https://github.com/yongkyuns/nxrs/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/hal/api/src/lib.rs
+[R05]: https://github.com/yongkyuns/nxrs/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/service/src/camera.rs
+[R06]: https://github.com/yongkyuns/nxrs/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/app/nxrs/src/product.rs
+[R07]: https://github.com/yongkyuns/nxrs/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/platform/native/src/main.rs
+[R09]: https://github.com/yongkyuns/nxrs/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/hal/native/src/recording.rs
+[R11]: https://github.com/yongkyuns/nxrs/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/hal/nuttx/src/lib.rs
+[R12]: https://github.com/yongkyuns/nxrs/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/tools/check-architecture.py
+[R13]: https://github.com/yongkyuns/nxrs/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/docs/nuttx-sim.md
+[R14]: https://github.com/yongkyuns/nxrs/blob/e6a11f739ef83f4e3f81ec8c7ab964cf7c5032bc/docs/nuttx-qemu.md
 [E01]: https://doc.rust-lang.org/cargo/reference/cargo-targets.html
 [E02]: https://doc.rust-lang.org/cargo/reference/manifest.html#the-metadata-table
 [E03]: https://doc.rust-lang.org/cargo/reference/features.html
@@ -591,4 +591,4 @@ External runtime guidance is not evidence for an untested target configuration.
 
 [E08]: https://doc.rust-lang.org/rustc/platform-support/wasm32-unknown-emscripten.html
 [E09]: https://emscripten.org/docs/porting/pthreads.html
-[Q01]: https://github.com/yongkyuns/rustcam/actions/runs/36274987242
+[Q01]: https://github.com/yongkyuns/nxrs/actions/runs/36274987242

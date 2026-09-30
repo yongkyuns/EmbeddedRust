@@ -1,11 +1,11 @@
 [package]
-name = "rustcam-camera-mock"
+name = "nxrs-camera-mock"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-rustcam-camera-api = { path = "../api" }
+nxrs-camera-api = { path = "../api" }
 
-[package.metadata.rustcam]
+[package.metadata.nxrs]
 mode = "mock"
 platforms = ["std", "wasm32-unknown-unknown"]

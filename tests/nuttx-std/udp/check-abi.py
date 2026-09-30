@@ -132,11 +132,11 @@ def run(out):
     c_source = ('#include <nuttx/config.h>\n#include <stdint.h>\n#include <stddef.h>\n'
                 '#include <sys/types.h>\n#include <sys/socket.h>\n#include <netinet/in.h>\n'
                 '#include <sys/time.h>\n#include <sys/ioctl.h>\n#include <fcntl.h>\n#include <errno.h>\n'
-                '__attribute__((section(".rustcam_abi"), used))\nconst uint32_t socket_abi[] = {\n'
+                '__attribute__((section(".nxrs_abi"), used))\nconst uint32_t socket_abi[] = {\n'
                 + ''.join(f'  (uint32_t)({c}), /* {name} */\n' for name, c, _, _ in rows) + '};\n')
     rust_source = ('#![no_std]\n#![feature(rustc_private)]\nextern crate libc;\n'
                    'use core::mem::{size_of, align_of, offset_of};\n'
-                   '#[used]\n#[no_mangle]\n#[link_section = ".rustcam_abi"]\n'
+                   '#[used]\n#[no_mangle]\n#[link_section = ".nxrs_abi"]\n'
                    f'pub static SOCKET_ABI: [u32; {len(rows)}] = [\n'
                    + ''.join(f'    ({r}) as u32, // {name}\n' for name, _, r, _ in rows) + '];\n')
     (out / 'socket-native.c').write_text(c_source)
@@ -153,7 +153,7 @@ def run(out):
         objcopy_name = cross_prefix + 'objcopy'
         objcopy = str(compiler.with_name(objcopy_name)) if compiler.parent != Path('.') else objcopy_name
         command = [objcopy, '--dump-section',
-                   f'.rustcam_abi={out}/socket-{role}.bin', str(out / f'socket-{role}.o')]
+                   f'.nxrs_abi={out}/socket-{role}.bin', str(out / f'socket-{role}.o')]
         subprocess.run(command, check=True)
         executed.append(command)
         raw = (out / f'socket-{role}.bin').read_bytes()

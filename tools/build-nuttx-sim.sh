@@ -21,7 +21,7 @@ for entry in 'nuttx:nuttx' 'nuttx-apps:apps'; do
   git -C "$ROOT/external/$source_name" archive HEAD | tar -x -C "$OUT/$destination"
 done
 {
-  echo "rustcam=$(git -C "$ROOT" rev-parse HEAD)"
+  echo "nxrs=$(git -C "$ROOT" rev-parse HEAD)"
   echo "nuttx=$(git -C "$ROOT/external/nuttx" rev-parse HEAD)"
   echo "apps=$(git -C "$ROOT/external/nuttx-apps" rev-parse HEAD)"
   echo 'core-build=source; code-model=small; relocation-model=pic; build-std=core'
@@ -31,10 +31,10 @@ cd "$ROOT"
 # The distributed core uses the kernel code model, not small/PIC. Scope the
 # unstable rebuild opt-in to this pinned compiler invocation.
 RUSTC_BOOTSTRAP=1 RUSTFLAGS='-C code-model=small -C relocation-model=pic' \
-  cargo build --locked --profile nuttx-sim --lib -p rustcam-nuttx-app \
+  cargo build --locked --profile nuttx-sim --lib -p nxrs-nuttx-app \
   --target x86_64-unknown-none -Zbuild-std=core
-LIB="$ROOT/target/x86_64-unknown-none/nuttx-sim/librustcam_nuttx_app.a"
-APP="$OUT/apps/examples/rustcam_sim"
+LIB="$ROOT/target/x86_64-unknown-none/nuttx-sim/libnxrs_nuttx_app.a"
+APP="$OUT/apps/examples/nxrs_sim"
 mkdir -p "$APP"
 cp "$ROOT/platform/nuttx/qualification/"* "$APP/"
 cp "$ROOT/tests/nuttx/c/"* "$APP/"
@@ -43,7 +43,7 @@ cp "$ROOT/hal/storage/nuttx/ffi/"{storage.c,storage.h} "$APP/"
 cp "$ROOT/hal/support/nuttx/ffi/"{nuttx_support.c,nuttx_support.h} "$APP/"
 cd "$OUT/nuttx"
 source "$ROOT/platform/nuttx/profiles/sim.sh"
-make -j"${NUTTX_SIM_JOBS:-4}" RUSTCAM_SIM_LIB="$LIB"
+make -j"${NUTTX_SIM_JOBS:-4}" NXRS_SIM_LIB="$LIB"
 cp .config "$OUT/resolved.config"
 nm arch/sim/src/nuttx.rel > "$OUT/symbols.txt"
 objdump -r arch/sim/src/nuttx.rel > "$OUT/relocations.txt"

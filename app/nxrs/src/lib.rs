@@ -1,4 +1,4 @@
-//! Portable rustcam product policy and composition; no OS or device construction.
+//! Portable nxrs product policy and composition; no OS or device construction.
 #![no_std]
 #![forbid(unsafe_code)]
 

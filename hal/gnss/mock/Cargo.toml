@@ -1,11 +1,11 @@
 [package]
-name = "rustcam-gnss-mock"
+name = "nxrs-gnss-mock"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-rustcam-gnss-api = { path = "../api" }
+nxrs-gnss-api = { path = "../api" }
 
-[package.metadata.rustcam]
+[package.metadata.nxrs]
 mode = "synthetic-demo"
 platforms = ["std"]

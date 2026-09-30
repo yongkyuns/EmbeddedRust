@@ -127,7 +127,7 @@ source identity and SDK-patch evidence. Artifact retention is finite.
 With the pinned SDK active and compiler/rust-src installed:
 
 ```sh
-cargo +1.90.0 run --locked --release -p rustcam-browser-threads
+cargo +1.90.0 run --locked --release -p nxrs-browser-threads
 python3 tests/browser-threads/run.py --self-test
 python3 tests/browser-threads/prepare-std.py --self-test
 BROWSER_STD_TLS_FIX=1 bash tests/browser-threads/build.sh
@@ -158,11 +158,11 @@ must execute on a responsive browser context, not a worker trapped in a synchron
 Rust loop awaiting that callback. Keep this adaptation behind HAL/target support.
 NuttX-specific results and ABI limits are in [nuttx-std.md](nuttx-std.md).
 
-[initial]: https://github.com/yongkyuns/rustcam/actions/runs/36274987242
-[tls-failure]: https://github.com/yongkyuns/rustcam/actions/runs/36287319894
-[pr]: https://github.com/yongkyuns/rustcam/pull/5
+[initial]: https://github.com/yongkyuns/nxrs/actions/runs/36274987242
+[tls-failure]: https://github.com/yongkyuns/nxrs/actions/runs/36287319894
+[pr]: https://github.com/yongkyuns/nxrs/pull/5
 [tls-source]: https://github.com/rust-lang/rust/blob/f7575a9da8e4a4fca3b5668d5a2ea7476db44b3f/library/std/src/sys/thread_local/mod.rs
 [tls-key]: https://github.com/rust-lang/rust/blob/f7575a9da8e4a4fca3b5668d5a2ea7476db44b3f/library/std/src/sys/thread_local/guard/key.rs
 [entry-fix]: https://github.com/rust-lang/rust/commit/f4db0a969c2a6631aefb350d7bc25ff4f900cc67
 
-[extended]: https://github.com/yongkyuns/rustcam/actions/runs/36287691860
+[extended]: https://github.com/yongkyuns/nxrs/actions/runs/36287691860

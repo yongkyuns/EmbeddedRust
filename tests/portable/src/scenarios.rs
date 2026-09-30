@@ -1,8 +1,8 @@
 //! The SAME assertions execute in native tests, the CLI, Node, and Chromium.
 use std::collections::VecDeque;
-use rustcam_applications::{AppState, CameraProduct, Monitor, Progress, Recorder};
-use rustcam_camera_api::{Capture, DeviceError, Format, PixelFormat};
-use rustcam_services::{payload_checksum, CameraService, CameraState, CaptureProgress, Error, Frames, RecordingService, TelemetryService, SUMMARY_BYTES};
+use nxrs_applications::{AppState, CameraProduct, Monitor, Progress, Recorder};
+use nxrs_camera_api::{Capture, DeviceError, Format, PixelFormat};
+use nxrs_services::{payload_checksum, CameraService, CameraState, CaptureProgress, Error, Frames, RecordingService, TelemetryService, SUMMARY_BYTES};
 use crate::mocks::{CameraAction, MockCamera, MockStorage, MockTransport, FORMAT};
 
 pub type Product = CameraProduct<MockCamera, MockStorage, MockTransport, 16, 2>;

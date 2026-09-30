@@ -21,7 +21,7 @@ cleanly to NSH. The injected failure command was rejected. Artifact
 `886f1abf27994de1c7fe1968de9fe4ecbc07f6aad0b31458b3022738a39a1db6`.
 
 This qualifies full behavior under ESP32-S3 emulation, not physical camera/radio
-hardware or the final production `app/rustcam` firmware packaging. The x86
+hardware or the final production `app/nxrs` firmware packaging. The x86
 NuttX simulator remains a separate core-only compatibility oracle.
 
 
@@ -234,12 +234,12 @@ The relocatable link still produces Rust debugger symbolization warnings.
 C frames/source/disassembly support the diagnosis; complete debugger support is
 not claimed. A scoped runtime pass is not the entire firmware migration.
 
-[qualified]: https://github.com/yongkyuns/rustcam/actions/runs/36285527098
-[pr]: https://github.com/yongkyuns/rustcam/pull/5
-[parker]: https://github.com/yongkyuns/rustcam/actions/runs/36281646713
-[fault]: https://github.com/yongkyuns/rustcam/actions/runs/36283070977
+[qualified]: https://github.com/yongkyuns/nxrs/actions/runs/36285527098
+[pr]: https://github.com/yongkyuns/nxrs/pull/5
+[parker]: https://github.com/yongkyuns/nxrs/actions/runs/36281646713
+[fault]: https://github.com/yongkyuns/nxrs/actions/runs/36283070977
 [libc-poll]: https://github.com/rust-lang/libc/blob/0.2.175/src/unix/mod.rs
 [nuttx-poll]: https://github.com/yongkyuns/nuttx/blob/433092e620a967780bfaabf4908b3d440bb7ce46/include/sys/poll.h
 [poll-impl]: https://github.com/yongkyuns/nuttx/blob/433092e620a967780bfaabf4908b3d440bb7ce46/fs/vfs/fs_poll.c
 
-[extended]: https://github.com/yongkyuns/rustcam/actions/runs/36287691876
+[extended]: https://github.com/yongkyuns/nxrs/actions/runs/36287691876

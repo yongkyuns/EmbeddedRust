@@ -6,7 +6,7 @@
 
 use std::time::{Duration, Instant};
 
-use rustcam_navigation_services::{
+use nxrs_navigation_services::{
     FusionService, GnssService, HealthService, ImuService,
 };
 

@@ -1,13 +1,13 @@
 use std::time::Duration;
 
-use rustcam_navigation_services::{
+use nxrs_navigation_services::{
     FusionConfig, FusionService, GnssConfig, GnssService, HealthService, ImuConfig, ImuService,
 };
 
 fn start_services() -> (
-    rustcam_navigation_services::FusionHandle,
-    rustcam_navigation_services::ImuHandle,
-    rustcam_navigation_services::GnssHandle,
+    nxrs_navigation_services::FusionHandle,
+    nxrs_navigation_services::ImuHandle,
+    nxrs_navigation_services::GnssHandle,
 ) {
     let (fusion, inputs) = FusionService::with_config(FusionConfig {
         inbox_capacity: 8,

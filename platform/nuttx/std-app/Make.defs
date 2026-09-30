@@ -1,3 +1,3 @@
-ifneq ($(CONFIG_EXAMPLES_RUSTCAM_STD_APP),)
-CONFIGURED_APPS += $(APPDIR)/examples/rustcam_std_app
+ifneq ($(CONFIG_EXAMPLES_NXRS_STD_APP),)
+CONFIGURED_APPS += $(APPDIR)/examples/nxrs_std_app
 endif

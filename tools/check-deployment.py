@@ -53,7 +53,7 @@ def validate(
     for manifest in hal_root.glob("*/Cargo.toml"):
         data = load(manifest)
         package = data.get("package", {})
-        metadata = package.get("metadata", {}).get("rustcam", {})
+        metadata = package.get("metadata", {}).get("nxrs", {})
         if metadata.get("kind") == "hal-capability":
             facades[package.get("name")] = (manifest, data)
 
@@ -74,7 +74,7 @@ def validate(
         declared = (
             facade.get("package", {})
             .get("metadata", {})
-            .get("rustcam", {})
+            .get("nxrs", {})
             .get("provider-features", [])
         )
         if feature_name not in declared:
@@ -102,7 +102,7 @@ def validate(
             raise ValueError(
                 f"{selection} provider must live at hal/{capability}/{feature_name}"
             )
-        metadata = package.get("metadata", {}).get("rustcam", {})
+        metadata = package.get("metadata", {}).get("nxrs", {})
         platforms = metadata.get("platforms", [])
         if execution_platform not in platforms:
             raise ValueError(

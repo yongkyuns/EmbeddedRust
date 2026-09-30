@@ -2,7 +2,7 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
-use rustcam_imu_api::{DeviceError, Imu, ImuSample};
+use nxrs_imu_api::{DeviceError, Imu, ImuSample};
 
 #[derive(Default)]
 pub struct SyntheticImu {

@@ -27,8 +27,8 @@ concurrency:
 
 jobs:
   simulator:
-    if: github.repository == 'yongkyuns/rustcam' && github.actor == 'yongkyuns'
-    runs-on: [self-hosted, Linux, X64, rustcam, nuttx, isolated]
+    if: github.repository == 'yongkyuns/nxrs' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
     timeout-minutes: 20
     steps:
       - name: Verify isolated Linux runner

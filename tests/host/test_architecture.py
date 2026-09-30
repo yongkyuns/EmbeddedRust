@@ -104,8 +104,8 @@ class ArchitectureTests(unittest.TestCase):
                 data['workspace_default_members'].append(name)
                 self.assertTrue(CHECK.inspect(data, self.root))
 
-    def test_rustcam_app_has_no_provider_selection_exception(self):
-        self.packages['app']['name'] = 'rustcam-applications'
+    def test_nxrs_app_has_no_provider_selection_exception(self):
+        self.packages['app']['name'] = 'nxrs-applications'
         self.add('app', 'native', rename='configured-example', optional=True)
         self.assertTrue(self.violations())
 
@@ -164,15 +164,15 @@ class ArchitectureTests(unittest.TestCase):
                     self.assertTrue(self.violations())
                     self.packages[a]['dependencies'].pop()
 
-    def test_rustcam_app_cannot_select_camera_provider_directly(self):
+    def test_nxrs_app_cannot_select_camera_provider_directly(self):
         self.camera_packages()
-        self.packages['app']['name'] = 'rustcam-applications'
+        self.packages['app']['name'] = 'nxrs-applications'
         self.add('app', 'camera-native', rename='configured-camera', optional=True)
         self.assertTrue(self.violations())
 
-    def test_rustcam_app_cannot_select_camera_mock_directly(self):
+    def test_nxrs_app_cannot_select_camera_mock_directly(self):
         self.camera_packages()
-        self.packages['app']['name'] = 'rustcam-applications'
+        self.packages['app']['name'] = 'nxrs-applications'
         self.add('app', 'camera-mock', rename='configured-camera', optional=True)
         self.assertTrue(self.violations())
 
@@ -208,9 +208,9 @@ class ArchitectureTests(unittest.TestCase):
                     self.assertTrue(self.violations())
                     self.packages[a]['dependencies'].pop()
 
-    def test_rustcam_app_cannot_select_storage_provider_directly(self):
+    def test_nxrs_app_cannot_select_storage_provider_directly(self):
         self.storage_packages()
-        self.packages['app']['name'] = 'rustcam-applications'
+        self.packages['app']['name'] = 'nxrs-applications'
         self.add('app', 'storage-native', rename='configured-storage', optional=True)
         self.assertTrue(self.violations())
 

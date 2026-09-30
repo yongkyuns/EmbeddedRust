@@ -52,9 +52,9 @@ class TransportArchitectureTests(test_architecture.ArchitectureTests):
                     self.assertTrue(self.violations())
                     self.packages[a]['dependencies'].pop()
 
-    def test_rustcam_app_cannot_select_transport_provider_directly(self):
+    def test_nxrs_app_cannot_select_transport_provider_directly(self):
         self.transport_packages()
-        self.packages['app']['name'] = 'rustcam-applications'
+        self.packages['app']['name'] = 'nxrs-applications'
         self.add('app', 'transport-native', rename='configured-transport', optional=True)
         self.assertTrue(self.violations())
 

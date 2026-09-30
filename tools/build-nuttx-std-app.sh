@@ -13,59 +13,59 @@ usage: build-nuttx-std-app.sh \
 EOF
 }
 
-RUSTCAM_APP_MANIFEST=
-RUSTCAM_APP_PACKAGE=
-RUSTCAM_APP_BIN=
-RUSTCAM_APP_COMMAND=
-RUSTCAM_APP_PRIORITY=
-RUSTCAM_APP_STACKSIZE=
-RUSTCAM_PLATFORM=
+NXRS_APP_MANIFEST=
+NXRS_APP_PACKAGE=
+NXRS_APP_BIN=
+NXRS_APP_COMMAND=
+NXRS_APP_PRIORITY=
+NXRS_APP_STACKSIZE=
+NXRS_PLATFORM=
 OUT_ARG=
 
 while test "$#" -gt 0; do
   case "$1" in
-    --app-manifest) RUSTCAM_APP_MANIFEST="${2:-}"; shift 2 ;;
-    --app-package) RUSTCAM_APP_PACKAGE="${2:-}"; shift 2 ;;
-    --bin) RUSTCAM_APP_BIN="${2:-}"; shift 2 ;;
-    --command) RUSTCAM_APP_COMMAND="${2:-}"; shift 2 ;;
-    --priority) RUSTCAM_APP_PRIORITY="${2:-}"; shift 2 ;;
-    --stack-size) RUSTCAM_APP_STACKSIZE="${2:-}"; shift 2 ;;
-    --platform) RUSTCAM_PLATFORM="${2:-}"; shift 2 ;;
+    --app-manifest) NXRS_APP_MANIFEST="${2:-}"; shift 2 ;;
+    --app-package) NXRS_APP_PACKAGE="${2:-}"; shift 2 ;;
+    --bin) NXRS_APP_BIN="${2:-}"; shift 2 ;;
+    --command) NXRS_APP_COMMAND="${2:-}"; shift 2 ;;
+    --priority) NXRS_APP_PRIORITY="${2:-}"; shift 2 ;;
+    --stack-size) NXRS_APP_STACKSIZE="${2:-}"; shift 2 ;;
+    --platform) NXRS_PLATFORM="${2:-}"; shift 2 ;;
     --out) OUT_ARG="${2:-}"; shift 2 ;;
     *) echo "Unknown firmware backend argument: $1" >&2; usage; exit 2 ;;
   esac
 done
 
-for name in RUSTCAM_APP_MANIFEST RUSTCAM_APP_PACKAGE RUSTCAM_APP_BIN \
-  RUSTCAM_APP_COMMAND RUSTCAM_APP_PRIORITY RUSTCAM_APP_STACKSIZE \
-  RUSTCAM_PLATFORM OUT_ARG; do
+for name in NXRS_APP_MANIFEST NXRS_APP_PACKAGE NXRS_APP_BIN \
+  NXRS_APP_COMMAND NXRS_APP_PRIORITY NXRS_APP_STACKSIZE \
+  NXRS_PLATFORM OUT_ARG; do
   test -n "${!name:-}" || { echo "Missing required argument for $name" >&2; usage; exit 2; }
 done
 
-[[ "$RUSTCAM_PLATFORM" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || {
-  echo "Invalid platform name: $RUSTCAM_PLATFORM" >&2
+[[ "$NXRS_PLATFORM" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || {
+  echo "Invalid platform name: $NXRS_PLATFORM" >&2
   exit 1
 }
-[[ "$RUSTCAM_APP_PRIORITY" =~ ^[0-9]+$ && "$RUSTCAM_APP_STACKSIZE" =~ ^[0-9]+$ ]] || {
+[[ "$NXRS_APP_PRIORITY" =~ ^[0-9]+$ && "$NXRS_APP_STACKSIZE" =~ ^[0-9]+$ ]] || {
   echo "Priority and stack size must be positive integers" >&2
   exit 1
 }
-test "$RUSTCAM_APP_PRIORITY" -gt 0 && test "$RUSTCAM_APP_STACKSIZE" -gt 0 || {
+test "$NXRS_APP_PRIORITY" -gt 0 && test "$NXRS_APP_STACKSIZE" -gt 0 || {
   echo "Priority and stack size must be positive integers" >&2
   exit 1
 }
 
-[[ "$RUSTCAM_APP_MANIFEST" = /* ]] || RUSTCAM_APP_MANIFEST="$ROOT/$RUSTCAM_APP_MANIFEST"
-test -f "$RUSTCAM_APP_MANIFEST" || {
-  echo "Missing app manifest: $RUSTCAM_APP_MANIFEST" >&2
+[[ "$NXRS_APP_MANIFEST" = /* ]] || NXRS_APP_MANIFEST="$ROOT/$NXRS_APP_MANIFEST"
+test -f "$NXRS_APP_MANIFEST" || {
+  echo "Missing app manifest: $NXRS_APP_MANIFEST" >&2
   exit 1
 }
 [[ "$OUT_ARG" = /* ]] && OUT="$OUT_ARG" || OUT="$ROOT/$OUT_ARG"
-RUSTCAM_DEPLOYMENT="$RUSTCAM_APP_BIN-$RUSTCAM_PLATFORM"
+NXRS_DEPLOYMENT="$NXRS_APP_BIN-$NXRS_PLATFORM"
 
-PLATFORM_PATH="$ROOT/platform/nuttx/platforms/$RUSTCAM_PLATFORM.toml"
+PLATFORM_PATH="$ROOT/platform/nuttx/platforms/$NXRS_PLATFORM.toml"
 test -f "$PLATFORM_PATH" || {
-  echo "Unknown NuttX platform: $RUSTCAM_PLATFORM ($PLATFORM_PATH)" >&2
+  echo "Unknown NuttX platform: $NXRS_PLATFORM ($PLATFORM_PATH)" >&2
   exit 1
 }
 command -v python3 >/dev/null || {
@@ -104,7 +104,7 @@ scalar("target", "NUTTX_TARGET")
 scalar("crossdev", "NUTTX_CROSSDEV")
 scalar("machine", "NUTTX_MACHINE")
 scalar("image", "NUTTX_IMAGE_NAME")
-array(data.get("hal-features"), "hal-features", "RUSTCAM_HAL_FEATURES", nonempty=True)
+array(data.get("hal-features"), "hal-features", "NXRS_HAL_FEATURES", nonempty=True)
 
 kconfig = data.get("kconfig")
 if not isinstance(kconfig, dict):
@@ -184,7 +184,7 @@ for pair in nuttx:nuttx nuttx-apps:apps; do
   git -C "$ROOT/external/$source_name" archive "$expected" | tar -x -C "$OUT/$destination"
 done
 
-APP="$OUT/apps/examples/rustcam_std_app"
+APP="$OUT/apps/examples/nxrs_std_app"
 mkdir -p "$APP"
 cp "$ROOT/platform/nuttx/std-app/"* "$APP/"
 
@@ -205,7 +205,7 @@ for assignment in "${NUTTX_SET[@]:-}"; do
   kconfig-tweak --set-val "CONFIG_${assignment%%=*}" "${assignment#*=}"
 done
 
-for symbol in EXAMPLES_RUSTCAM_STD_APP SYSTEM_TIME64 FS_LARGEFILE DEV_URANDOM   SCHED_WAITPID SCHED_HAVE_PARENT SCHED_CHILD_STATUS NSH_DISABLEBG NSH_ARGCAT; do
+for symbol in EXAMPLES_NXRS_STD_APP SYSTEM_TIME64 FS_LARGEFILE DEV_URANDOM   SCHED_WAITPID SCHED_HAVE_PARENT SCHED_CHILD_STATUS NSH_DISABLEBG NSH_ARGCAT; do
   kconfig-tweak --enable "CONFIG_$symbol"
 done
 kconfig-tweak --set-val CONFIG_TLS_NELEM 16
@@ -217,15 +217,15 @@ cp .config "$OUT/resolved.config"
 for required in "${NUTTX_REQUIRE[@]:-}"; do
   test -n "$required" || continue
   grep -qx "$required" .config || {
-    echo "Deployment $RUSTCAM_DEPLOYMENT unresolved requirement: $required" >&2
+    echo "Deployment $NXRS_DEPLOYMENT unresolved requirement: $required" >&2
     exit 1
   }
 done
-for required in   CONFIG_BUILD_FLAT=y CONFIG_EXAMPLES_RUSTCAM_STD_APP=y CONFIG_SYSTEM_TIME64=y   CONFIG_FS_LARGEFILE=y CONFIG_TLS_NELEM=16 CONFIG_TLS_NCLEANUP=16   CONFIG_SCHED_WAITPID=y CONFIG_SCHED_HAVE_PARENT=y CONFIG_SCHED_CHILD_STATUS=y   CONFIG_NSH_DISABLEBG=y CONFIG_NSH_ARGCAT=y CONFIG_RR_INTERVAL=10; do
+for required in   CONFIG_BUILD_FLAT=y CONFIG_EXAMPLES_NXRS_STD_APP=y CONFIG_SYSTEM_TIME64=y   CONFIG_FS_LARGEFILE=y CONFIG_TLS_NELEM=16 CONFIG_TLS_NCLEANUP=16   CONFIG_SCHED_WAITPID=y CONFIG_SCHED_HAVE_PARENT=y CONFIG_SCHED_CHILD_STATUS=y   CONFIG_NSH_DISABLEBG=y CONFIG_NSH_ARGCAT=y CONFIG_RR_INTERVAL=10; do
   grep -qx "$required" .config || { echo "Unresolved std requirement: $required" >&2; exit 1; }
 done
 if [[ -n "${NUTTX_FORBID_REGEX:-}" ]] && grep -Eq "$NUTTX_FORBID_REGEX" .config; then
-  echo "Deployment $RUSTCAM_DEPLOYMENT enabled a forbidden NuttX option" >&2
+  echo "Deployment $NXRS_DEPLOYMENT enabled a forbidden NuttX option" >&2
   grep -E "$NUTTX_FORBID_REGEX" .config >&2
   exit 1
 fi
@@ -235,14 +235,14 @@ if grep -qx 'CONFIG_SIG_DEFAULT=y' .config; then
 fi
 
 cd "$ROOT"
-CHECK_DEPLOYMENT=(--app-manifest "$RUSTCAM_APP_MANIFEST" --execution-platform std)
-for feature in "${RUSTCAM_HAL_FEATURES[@]}"; do
+CHECK_DEPLOYMENT=(--app-manifest "$NXRS_APP_MANIFEST" --execution-platform std)
+for feature in "${NXRS_HAL_FEATURES[@]}"; do
   CHECK_DEPLOYMENT+=(--hal-feature "$feature")
 done
 python3 tools/check-deployment.py "${CHECK_DEPLOYMENT[@]}" --out "$OUT/provider-selection.json"
-HAL_FEATURES_CSV="$(IFS=,; echo "${RUSTCAM_HAL_FEATURES[*]}")"
+HAL_FEATURES_CSV="$(IFS=,; echo "${NXRS_HAL_FEATURES[*]}")"
 HAL_PACKAGES=()
-for feature in "${RUSTCAM_HAL_FEATURES[@]}"; do
+for feature in "${NXRS_HAL_FEATURES[@]}"; do
   package="${feature%%/*}"
   HAL_PACKAGES+=(-p "$package")
 done
@@ -262,7 +262,7 @@ if test "$TOOLCHAIN_KIND" = esp32s3; then
   export NUTTX_STD_GNU_LINKER="$(command -v xtensa-esp32s3-elf-ld)"
   "$RUSTC" -Z unstable-options --print target-spec-json \
     --target xtensa-esp32s3-none-elf > "$OUT/xtensa-bare-target.json"
-  python3 - "$OUT" "$RUSTCAM_DEPLOYMENT" <<'PY_TARGET'
+  python3 - "$OUT" "$NXRS_DEPLOYMENT" <<'PY_TARGET'
 import json, pathlib, sys
 out = pathlib.Path(sys.argv[1])
 deployment = sys.argv[2]
@@ -277,7 +277,7 @@ target.update(os="nuttx", **{
 })
 for key in ("pre-link-args", "late-link-args", "post-link-args"):
     target.pop(key, None)
-target["metadata"] = {"description": f"Rustcam deployment {deployment}", "std": True}
+target["metadata"] = {"description": f"Nxrs deployment {deployment}", "std": True}
 (out / "xtensa-esp32s3-nuttx.json").write_text(json.dumps(target, indent=2) + "\n")
 PY_TARGET
   TARGET_ARG="$OUT/$NUTTX_TARGET.json"
@@ -292,8 +292,8 @@ export NUTTX_STD_LINK_LOG="$OUT/rust-link.json"
 export RUSTFLAGS="-C panic=abort -C linker=$ROOT/tests/nuttx-std/link.py"
 
 "$CARGO_BIN" build --locked --release \
-  -p "$RUSTCAM_APP_PACKAGE" "${HAL_PACKAGES[@]}" \
-  --features "$HAL_FEATURES_CSV" --bin "$RUSTCAM_APP_BIN" \
+  -p "$NXRS_APP_PACKAGE" "${HAL_PACKAGES[@]}" \
+  --features "$HAL_FEATURES_CSV" --bin "$NXRS_APP_BIN" \
   --target "$TARGET_ARG" -Zbuild-std=std,panic_abort \
   --message-format=json-render-diagnostics | tee "$OUT/cargo-messages.jsonl"
 
@@ -316,7 +316,7 @@ proof = {
 assert proof["selected_source_matches"], "Cargo selected the wrong standard-library source"
 PY_SOURCE
 
-ELF="$CARGO_TARGET_DIR/$NUTTX_TARGET/release/$RUSTCAM_APP_BIN"
+ELF="$CARGO_TARGET_DIR/$NUTTX_TARGET/release/$NXRS_APP_BIN"
 "${NUTTX_CROSSDEV}readelf" -h "$ELF" > "$OUT/rust-elf-header.txt"
 grep -q 'REL (Relocatable file)' "$OUT/rust-elf-header.txt"
 grep -Eq "Machine: +$NUTTX_MACHINE$" "$OUT/rust-elf-header.txt"
@@ -333,10 +333,10 @@ python3 tests/nuttx-std/check-abi.py --check-imports "$OUT/rust-symbols.txt"
 unset RUSTFLAGS
 MAKE_ARGS=(
   "CROSSDEV=$NUTTX_CROSSDEV"
-  "RUSTCAM_STD_ELF=$ELF"
-  "RUSTCAM_APP_COMMAND=$RUSTCAM_APP_COMMAND"
-  "RUSTCAM_APP_PRIORITY=$RUSTCAM_APP_PRIORITY"
-  "RUSTCAM_APP_STACKSIZE=$RUSTCAM_APP_STACKSIZE"
+  "NXRS_STD_ELF=$ELF"
+  "NXRS_APP_COMMAND=$NXRS_APP_COMMAND"
+  "NXRS_APP_PRIORITY=$NXRS_APP_PRIORITY"
+  "NXRS_APP_STACKSIZE=$NXRS_APP_STACKSIZE"
 )
 if test "$TOOLCHAIN_KIND" = esp32s3; then
   MAKE_ARGS+=(ESPTOOL_BINDIR=.)
@@ -348,7 +348,7 @@ python3 tests/nuttx-std/check-abi.py \
   --out "$OUT" --target "$NUTTX_TARGET" "${ABI_ARGS[@]}"
 
 "${NUTTX_CROSSDEV}nm" "$OUT/nuttx/nuttx" > "$OUT/symbols.txt"
-for symbol in "${RUSTCAM_APP_COMMAND}_main" pthread_create pthread_join clock_gettime nx_start; do
+for symbol in "${NXRS_APP_COMMAND}_main" pthread_create pthread_join clock_gettime nx_start; do
   grep -Eq " [TtWw] $symbol$" "$OUT/symbols.txt" || {
     echo "Final NuttX image missing $symbol" >&2
     exit 1
@@ -361,16 +361,16 @@ NUTTX_IMAGE="$OUT/nuttx/$NUTTX_IMAGE_NAME"
 test -s "$NUTTX_IMAGE"
 
 {
-  echo "deployment=$RUSTCAM_DEPLOYMENT"
-  echo "rustcam=$(git rev-parse HEAD)"
+  echo "deployment=$NXRS_DEPLOYMENT"
+  echo "nxrs=$(git rev-parse HEAD)"
   echo "nuttx=$(git rev-parse HEAD:external/nuttx)"
   echo "apps=$(git rev-parse HEAD:external/nuttx-apps)"
-  echo "app_package=$RUSTCAM_APP_PACKAGE"
-  echo "app_bin=$RUSTCAM_APP_BIN"
-  echo "platform=$RUSTCAM_PLATFORM"
+  echo "app_package=$NXRS_APP_PACKAGE"
+  echo "app_bin=$NXRS_APP_BIN"
+  echo "platform=$NXRS_PLATFORM"
   echo "platform_profile=${PLATFORM_PATH#$ROOT/}"
   echo "hal_features=$HAL_FEATURES_CSV"
-  echo "app_command=$RUSTCAM_APP_COMMAND"
+  echo "app_command=$NXRS_APP_COMMAND"
   echo "target=$NUTTX_TARGET"
   echo "board=$NUTTX_BOARD"
   "$RUSTC" --version --verbose
@@ -380,7 +380,7 @@ test -s "$NUTTX_IMAGE"
   fi
 } > "$OUT/provenance.txt"
 
-HASH_INPUTS=("$OUT/nuttx/nuttx" "$NUTTX_IMAGE" "$ELF" "$RUSTCAM_APP_MANIFEST" "$PLATFORM_PATH")
+HASH_INPUTS=("$OUT/nuttx/nuttx" "$NUTTX_IMAGE" "$ELF" "$NXRS_APP_MANIFEST" "$PLATFORM_PATH")
 if test "$TOOLCHAIN_KIND" = esp32s3; then
   HASH_INPUTS+=("$TARGET_ARG")
 fi

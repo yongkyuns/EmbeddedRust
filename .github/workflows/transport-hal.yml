@@ -39,10 +39,10 @@ jobs:
         run: python tools/check-transport-isolation.py
       - name: Check socket ownership, rejection and app startup allocation
         run: |
-          cargo test --locked -p rustcam-transport-native -p rustcam-transport-mock
-          cargo test --locked -p rustcam-applications --features rustcam-applications/cli,rustcam-camera/native,rustcam-storage/native,rustcam-transport/native --bin rustcam
+          cargo test --locked -p nxrs-transport-native -p nxrs-transport-mock
+          cargo test --locked -p nxrs-applications --features nxrs-applications/cli,nxrs-camera/native,nxrs-storage/native,nxrs-transport/native --bin nxrs
       - name: Lint independent transport packages
-        run: cargo clippy --locked -p rustcam-transport-api -p rustcam-transport-native -p rustcam-transport-mock --all-targets -- -D warnings
+        run: cargo clippy --locked -p nxrs-transport-api -p nxrs-transport-native -p nxrs-transport-mock --all-targets -- -D warnings
       - uses: actions/upload-artifact@v4
         if: always()
         with:

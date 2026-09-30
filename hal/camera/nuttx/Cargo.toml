@@ -1,12 +1,12 @@
 [package]
-name = "rustcam-camera-nuttx"
+name = "nxrs-camera-nuttx"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-rustcam-camera-api = { path = "../api" }
-rustcam-nuttx-support = { path = "../../support/nuttx" }
+nxrs-camera-api = { path = "../api" }
+nxrs-nuttx-support = { path = "../../support/nuttx" }
 
-[package.metadata.rustcam]
+[package.metadata.nxrs]
 mode = "read-device"
 platforms = ["nuttx", "core-only-fixture"]

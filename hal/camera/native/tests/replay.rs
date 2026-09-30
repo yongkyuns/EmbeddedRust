@@ -1,8 +1,8 @@
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
-use rustcam_camera_native::ReplayCamera;
-use rustcam_camera_api::{Camera, DeviceError, Format, PixelFormat};
+use nxrs_camera_native::ReplayCamera;
+use nxrs_camera_api::{Camera, DeviceError, Format, PixelFormat};
 
 const FORMAT: Format = Format { width: 2, height: 2, pixels: PixelFormat::Gray8 };
 static NEXT: AtomicU64 = AtomicU64::new(0);
@@ -11,7 +11,7 @@ struct Temp(PathBuf);
 impl Temp {
     fn new() -> Self {
         loop {
-            let path = std::env::temp_dir().join(format!("rustcam-native-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
+            let path = std::env::temp_dir().join(format!("nxrs-native-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
             match fs::create_dir(&path) {
                 Ok(()) => return Self(path),
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,

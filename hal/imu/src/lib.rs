@@ -2,11 +2,11 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
-pub use rustcam_imu_api::{DeviceError, Imu, ImuSample};
+pub use nxrs_imu_api::{DeviceError, Imu, ImuSample};
 
 #[cfg(feature = "mock")]
 pub fn open() -> Result<impl Imu + Send + 'static, DeviceError> {
-    Ok(rustcam_imu_mock::SyntheticImu::default())
+    Ok(nxrs_imu_mock::SyntheticImu::default())
 }
 
 #[cfg(not(feature = "mock"))]

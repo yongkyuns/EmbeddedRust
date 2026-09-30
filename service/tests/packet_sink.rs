@@ -1,7 +1,7 @@
 //! Packet-producing behavior needs no socket or mock HAL crate.
-use rustcam_camera_api::{Capture, Format, Frame, PixelFormat};
-use rustcam_services::{Error, SinkStats, Telemetry, TelemetryService};
-use rustcam_transport_api::{DeviceError, PacketSink, Transport};
+use nxrs_camera_api::{Capture, Format, Frame, PixelFormat};
+use nxrs_services::{Error, SinkStats, Telemetry, TelemetryService};
+use nxrs_transport_api::{DeviceError, PacketSink, Transport};
 
 fn frame() -> Frame<'static> {
     Frame {

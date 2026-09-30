@@ -34,15 +34,15 @@ jobs:
           rustup toolchain install nightly-2026-09-25 --profile minimal --component rust-src
       - name: Check probe formatting and oracle negative controls
         run: |
-          cargo +1.90.0 fmt --check -p rustcam-browser-threads
+          cargo +1.90.0 fmt --check -p nxrs-browser-threads
           python3 tests/browser-threads/run.py --self-test
           python3 tests/browser-threads/prepare-std.py --self-test
       - name: Execute identical source natively
         shell: bash
         run: |
-          timeout 30 cargo +1.90.0 run --locked --release -p rustcam-browser-threads
+          timeout 30 cargo +1.90.0 run --locked --release -p nxrs-browser-threads
           set +e
-          timeout 30 cargo +1.90.0 run --locked --release -p rustcam-browser-threads -- fail
+          timeout 30 cargo +1.90.0 run --locked --release -p nxrs-browser-threads -- fail
           result=$?
           set -e
           test "$result" -eq 7

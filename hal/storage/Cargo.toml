@@ -1,20 +1,20 @@
 [package]
-name = "rustcam-storage"
+name = "nxrs-storage"
 version.workspace = true
 edition.workspace = true
 
 [features]
 default = []
-mock = ["dep:rustcam-storage-mock"]
-native = ["dep:rustcam-storage-native"]
-nuttx = ["dep:rustcam-storage-nuttx"]
+mock = ["dep:nxrs-storage-mock"]
+native = ["dep:nxrs-storage-native"]
+nuttx = ["dep:nxrs-storage-nuttx"]
 
 [dependencies]
-rustcam-storage-api = { path = "api" }
-rustcam-storage-mock = { path = "mock", optional = true }
-rustcam-storage-native = { path = "native", optional = true }
-rustcam-storage-nuttx = { path = "nuttx", optional = true }
+nxrs-storage-api = { path = "api" }
+nxrs-storage-mock = { path = "mock", optional = true }
+nxrs-storage-native = { path = "native", optional = true }
+nxrs-storage-nuttx = { path = "nuttx", optional = true }
 
-[package.metadata.rustcam]
+[package.metadata.nxrs]
 kind = "hal-capability"
 provider-features = ["mock", "native", "nuttx"]

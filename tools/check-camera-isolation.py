@@ -8,7 +8,7 @@ import shutil
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = {'rustcam-hal-common', 'rustcam-camera-api'}
+BASE = {'nxrs-hal-common', 'nxrs-camera-api'}
 
 
 def packages(text, names):
@@ -27,7 +27,7 @@ def check(text, names, expected):
 
 
 def self_test():
-    names = {'api': 'rustcam-camera-api', 'error': 'rustcam-hal-common', 'bad': 'rustcam-native-backend'}
+    names = {'api': 'nxrs-camera-api', 'error': 'nxrs-hal-common', 'bad': 'nxrs-native-backend'}
     def fixture(ids, success=True):
         return '\n'.join(json.dumps(r) for r in [
             *({'reason': 'compiler-artifact', 'package_id': i} for i in ids),
@@ -56,12 +56,12 @@ def run(out):
     source = out / 'source.raw'
     source.write_bytes(bytes([7] * 4 + [9] * 4))
     cases = [
-        ('api-core', 'rustcam-camera-api', ['--lib', '--target', 'thumbv6m-none-eabi'], BASE),
-        ('api-wasm', 'rustcam-camera-api', ['--lib', '--target', 'wasm32-unknown-unknown'], BASE),
-        ('mock-wasm', 'rustcam-camera-mock', ['--lib', '--target', 'wasm32-unknown-unknown'], BASE | {'rustcam-camera-mock'}),
-        ('nuttx-core', 'rustcam-camera-nuttx', ['--lib', '--target', 'thumbv6m-none-eabi'], BASE | {'rustcam-camera-nuttx', 'rustcam-nuttx-support'}),
-        ('native-example', 'rustcam-camera-native', ['--example', 'replay'], BASE | {'rustcam-camera-native'}),
-        ('app-library', 'rustcam-applications', ['--lib', '--no-default-features'], BASE | {'rustcam-applications', 'rustcam-services', 'rustcam-camera', 'rustcam-storage', 'rustcam-storage-api', 'rustcam-transport', 'rustcam-transport-api'}),
+        ('api-core', 'nxrs-camera-api', ['--lib', '--target', 'thumbv6m-none-eabi'], BASE),
+        ('api-wasm', 'nxrs-camera-api', ['--lib', '--target', 'wasm32-unknown-unknown'], BASE),
+        ('mock-wasm', 'nxrs-camera-mock', ['--lib', '--target', 'wasm32-unknown-unknown'], BASE | {'nxrs-camera-mock'}),
+        ('nuttx-core', 'nxrs-camera-nuttx', ['--lib', '--target', 'thumbv6m-none-eabi'], BASE | {'nxrs-camera-nuttx', 'nxrs-nuttx-support'}),
+        ('native-example', 'nxrs-camera-native', ['--example', 'replay'], BASE | {'nxrs-camera-native'}),
+        ('app-library', 'nxrs-applications', ['--lib', '--no-default-features'], BASE | {'nxrs-applications', 'nxrs-services', 'nxrs-camera', 'nxrs-storage', 'nxrs-storage-api', 'nxrs-transport', 'nxrs-transport-api'}),
     ]
     report = []
     for label, package, flags, expected in cases:
@@ -84,8 +84,8 @@ def run(out):
         report.append({'case': label, 'compiled_packages': compiled})
         shutil.rmtree(target)
     for label, package, target, diagnostic in [
-            ('reject-native-wasm', 'rustcam-camera-native', 'wasm32-unknown-unknown', 'native camera replay supports'),
-            ('reject-nuttx-host', 'rustcam-camera-nuttx', None, 'NuttX descriptor support requires')]:
+            ('reject-native-wasm', 'nxrs-camera-native', 'wasm32-unknown-unknown', 'native camera replay supports'),
+            ('reject-nuttx-host', 'nxrs-camera-nuttx', None, 'NuttX descriptor support requires')]:
         directory = out / (label + '-target')
         command = ['cargo', 'check', '--locked', '-p', package, '--lib']
         if target:

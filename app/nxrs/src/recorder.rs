@@ -1,4 +1,4 @@
-use rustcam_services::{Error, Frames, Recordings};
+use nxrs_services::{Error, Frames, Recordings};
 use crate::{reader::Reader, AppState, AppStats, Progress};
 
 /// Composes Frames + Recordings. It cannot shut down its frame provider.

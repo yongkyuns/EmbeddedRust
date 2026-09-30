@@ -38,9 +38,9 @@ jobs:
       - name: Build storage without camera or transport providers
         run: python tools/check-storage-isolation.py
       - name: Preserve worker failure, saturation and barrier tests
-        run: cargo test --locked -p rustcam-storage-native -p rustcam-storage-mock
+        run: cargo test --locked -p nxrs-storage-native -p nxrs-storage-mock
       - name: Lint independent storage packages
-        run: cargo clippy --locked -p rustcam-storage-api -p rustcam-storage-native -p rustcam-storage-mock --all-targets -- -D warnings
+        run: cargo clippy --locked -p nxrs-storage-api -p nxrs-storage-native -p nxrs-storage-mock --all-targets -- -D warnings
       - uses: actions/upload-artifact@v4
         if: always()
         with:

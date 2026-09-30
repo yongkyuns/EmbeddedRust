@@ -20,7 +20,7 @@ cargo firmware --list-platforms
 ~~~
 
 The repository alias in `.cargo/config.toml` invokes the small host-side
-`rustcam-firmware` binary under `platform/firmware`.
+`nxrs-firmware` binary under `platform/firmware`.
 
 ## Sources of build data
 
@@ -32,7 +32,7 @@ A firmware-capable app declares execution-entry facts in its existing
 `Cargo.toml`:
 
 ~~~toml
-[package.metadata.rustcam.firmware]
+[package.metadata.nxrs.firmware]
 bin = "event-demo"
 command = "event_demo"
 priority = 100
@@ -77,7 +77,7 @@ and output paths, then calls one common backend with explicit arguments:
 cargo firmware
       |
       v
-rustcam-firmware
+nxrs-firmware
       |
       v
 tools/build-nuttx-std-app.sh
@@ -126,7 +126,7 @@ Zephyr:
 app + board/overlay
        -> enabled hardware/drivers
 
-Rustcam:
+Nxrs:
 Cargo app + product platform
        -> selected HAL providers + NuttX board/target
 ~~~
@@ -139,8 +139,8 @@ native OS configuration and final image link.
 The build frontend does not replace the capability facades.
 
 ~~~text
-ImuService -> rustcam-imu -> selected provider
-GnssService -> rustcam-gnss -> selected provider
+ImuService -> nxrs-imu -> selected provider
+GnssService -> nxrs-gnss -> selected provider
 ~~~
 
 Provider features are activated below app/service policy from the selected
@@ -159,5 +159,5 @@ There is no:
 - Devicetree clone;
 - general xtask/task-runner framework.
 
-`rustcam-firmware` has one purpose: compose an existing Cargo app with one
+`nxrs-firmware` has one purpose: compose an existing Cargo app with one
 product platform and produce a firmware image.

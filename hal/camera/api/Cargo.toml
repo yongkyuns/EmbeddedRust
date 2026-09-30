@@ -1,11 +1,11 @@
 [package]
-name = "rustcam-camera-api"
+name = "nxrs-camera-api"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-rustcam-hal-common = { path = "../../common" }
+nxrs-hal-common = { path = "../../common" }
 
-[package.metadata.rustcam]
+[package.metadata.nxrs]
 mode = "api"
 platforms = ["core", "std"]

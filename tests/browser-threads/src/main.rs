@@ -35,21 +35,21 @@ fn main() {
     assert_eq!(ENTRIES.fetch_add(1, Ordering::SeqCst), 0);
     let mode = std::env::args().nth(1).unwrap_or_else(|| "pass".into());
     assert!(mode == "pass" || mode == "fail");
-    println!("RUSTCAM_MAIN_ENTERED");
+    println!("NXRS_MAIN_ENTERED");
     if mode == "fail" {
-        eprintln!("RUSTCAM_INJECTED_FAILURE");
+        eprintln!("NXRS_INJECTED_FAILURE");
         std::process::exit(7);
     }
 
     // UI heartbeat must continue DURING this CPU work, not just during startup.
-    println!("RUSTCAM_CPU_BEGIN");
+    println!("NXRS_CPU_BEGIN");
     let start = Instant::now();
     let mut work = 0u64;
     while start.elapsed() < Duration::from_millis(400) {
         work = black_box(work.wrapping_add(1));
     }
     assert!(work > 0);
-    println!("RUSTCAM_CPU_END");
+    println!("NXRS_CPU_END");
 
     LOCAL.set(99);
     let main_id = thread::current().id();
@@ -139,6 +139,6 @@ fn main() {
     let cpu_peer_steps = PEER_STEPS.load(Ordering::SeqCst);
     assert_eq!((tls_drops, cpu_peer_steps), (8, 64));
     println!(
-        "RUSTCAM_THREAD_REPORT {{\"main_entries\":1,\"rounds\":{ROUNDS},\"joined_workers\":8,\"messages\":2048,\"checksum\":{checksum},\"backpressure_checks\":8,\"tls_isolation\":true,\"timeout\":true,\"disconnect\":true,\"tls_drops\":{tls_drops},\"cpu_peer_steps\":{cpu_peer_steps}}}"
+        "NXRS_THREAD_REPORT {{\"main_entries\":1,\"rounds\":{ROUNDS},\"joined_workers\":8,\"messages\":2048,\"checksum\":{checksum},\"backpressure_checks\":8,\"tls_isolation\":true,\"timeout\":true,\"disconnect\":true,\"tls_drops\":{tls_drops},\"cpu_peer_steps\":{cpu_peer_steps}}}"
     );
 }

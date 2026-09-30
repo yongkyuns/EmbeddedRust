@@ -7,9 +7,9 @@ RTOS benchmarking work is untouched.
 ## Run
 
 ```sh
-cargo test --locked -p rustcam-allocation-probe
-cargo test --locked -p rustcam-std-demo --features memory-probe memory_qualification -- --ignored --test-threads=1 --nocapture
-cargo test --locked -p rustcam-ao-stress --features memory-probe memory_qualification -- --ignored --test-threads=1 --nocapture
+cargo test --locked -p nxrs-allocation-probe
+cargo test --locked -p nxrs-std-demo --features memory-probe memory_qualification -- --ignored --test-threads=1 --nocapture
+cargo test --locked -p nxrs-ao-stress --features memory-probe memory_qualification -- --ignored --test-threads=1 --nocapture
 # Repeat both app commands with --release to qualify the optimized build too.
 ```
 

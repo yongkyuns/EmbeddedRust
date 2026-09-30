@@ -27,8 +27,8 @@ jobs:
     # Never expose the persistent self-hosted runner to pull_request events or
     # pushes by another account. The actual runner is additionally isolated in
     # a Lima VM with no macOS filesystem mounts.
-    if: github.repository == 'yongkyuns/rustcam' && github.actor == 'yongkyuns'
-    runs-on: [self-hosted, Linux, X64, rustcam, nuttx, isolated]
+    if: github.repository == 'yongkyuns/nxrs' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
     timeout-minutes: 25
     env:
       NUTTX_STD_COMPAT_FIXES: "1"
@@ -83,9 +83,9 @@ jobs:
           python3 tests/nuttx-std/udp/check-abi.py --self-test
           python3 tests/nuttx-std/udp/run.py --self-test
           bash -n tests/nuttx-std/build.sh
-          cargo +1.90.0 build --locked -p rustcam-std-udp
+          cargo +1.90.0 build --locked -p nxrs-std-udp
           python3 tests/nuttx-std/udp/run.py \
-            --native target/debug/rustcam-std-udp \
+            --native target/debug/nxrs-std-udp \
             --output target/udp-native
 
       - name: Build ordinary binary and reject incompatible socket ABI before boot

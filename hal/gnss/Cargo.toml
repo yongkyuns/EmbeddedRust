@@ -1,16 +1,16 @@
 [package]
-name = "rustcam-gnss"
+name = "nxrs-gnss"
 version.workspace = true
 edition.workspace = true
 
 [features]
 default = []
-mock = ["dep:rustcam-gnss-mock"]
+mock = ["dep:nxrs-gnss-mock"]
 
 [dependencies]
-rustcam-gnss-api = { path = "api" }
-rustcam-gnss-mock = { path = "mock", optional = true }
+nxrs-gnss-api = { path = "api" }
+nxrs-gnss-mock = { path = "mock", optional = true }
 
-[package.metadata.rustcam]
+[package.metadata.nxrs]
 kind = "hal-capability"
 provider-features = ["mock"]

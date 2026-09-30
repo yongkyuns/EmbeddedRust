@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
-#ifndef RUSTCAM_NUTTX_SUPPORT_H
-#define RUSTCAM_NUTTX_SUPPORT_H
+#ifndef NXRS_NUTTX_SUPPORT_H
+#define NXRS_NUTTX_SUPPORT_H
 #include <errno.h>
 /* Stable bridge status codes, not negated native errno values. */
 static inline int rc_errno(int value)

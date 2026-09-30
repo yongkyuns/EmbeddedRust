@@ -1,6 +1,6 @@
 # Native backend qualification
 
-The native replay profile runs from `app/rustcam/src/main.rs`. Camera, storage,
+The native replay profile runs from `app/nxrs/src/main.rs`. Camera, storage,
 and transport factories live in their respective `hal/*/native` capability
 crates and return the corresponding domain contracts; they do not construct
 services or run the app. The former `platform/native` executable
@@ -68,7 +68,7 @@ The telemetry service's existing 28-byte encoding is unchanged.
 ## Native CLI
 
 ```sh
-cargo +1.90.0 run --locked -p rustcam-applications --features native --bin rustcam -- \
+cargo +1.90.0 run --locked -p nxrs-applications --features native --bin nxrs -- \
   input.gray 2 2 gray8 10 new-recording-directory 127.0.0.1:9000
 ```
 
@@ -98,7 +98,7 @@ macOS and Windows only; NuttX/browser runtime probes are separate qualifications
 Run the native contract tests and the independent end-to-end decoder:
 
 ```sh
-cargo +1.90.0 test --locked -p rustcam-native-integration
+cargo +1.90.0 test --locked -p nxrs-native-integration
 RUSTUP_TOOLCHAIN=1.90.0 python tests/host/test-native-runner.py
 ```
 
@@ -106,7 +106,7 @@ The second command creates a real packed input file and loopback UDP receiver,
 runs the actual app binary, and independently checks persisted payloads,
 metadata, sequence IDs, timestamps and telemetry checksums in Python. It does
 not reuse the Rust record decoder or mock transport. Native CI executes this on Linux, macOS and Windows, while
-`rustcam-native-integration` owns the cross-capability resource/fault and
+`nxrs-native-integration` owns the cross-capability resource/fault and
 small-stack tests. This runs in addition to the portable mock scenarios,
 Cortex-M0 library compilation and actual Node/Chromium WASM execution.
 

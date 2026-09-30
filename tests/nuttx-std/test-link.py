@@ -19,7 +19,7 @@ def run(prefix):
     spec = importlib.util.spec_from_file_location('abi', Path(__file__).with_name('check-abi.py'))
     abi = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(abi)
-    with tempfile.TemporaryDirectory(prefix='rustcam-link-') as folder:
+    with tempfile.TemporaryDirectory(prefix='nxrs-link-') as folder:
         root = Path(folder)
         for mode in ('dead', 'live', 'address', 'weak', 'strip-live'):
             directory = root / mode

@@ -1,9 +1,9 @@
 //! Target storage failures through the real FileStorage and Recorder path.
 //! Only the input frames and selected syscall failures are synthetic.
-use rustcam_applications::{AppState, Progress, Recorder};
-use rustcam_storage_nuttx::FileStorage;
-use rustcam_storage_api::{Capture, DeviceError, Format, Frame, PixelFormat};
-use rustcam_services::{Error, Frames, RecordingService, Recordings};
+use nxrs_applications::{AppState, Progress, Recorder};
+use nxrs_storage_nuttx::FileStorage;
+use nxrs_storage_api::{Capture, DeviceError, Format, Frame, PixelFormat};
+use nxrs_services::{Error, Frames, RecordingService, Recordings};
 
 extern "C" {
     fn rc_test_storage_begin(case: u32) -> i32;

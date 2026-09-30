@@ -15,9 +15,9 @@ NuttX providers reject unsupported targets. `target_os="none"` is admitted by
 the NuttX provider only for existing core-only compilation/link fixtures, not
 as a claim of bare-metal operation without NuttX.
 
-The native rustcam profile acquires the camera through
-`rustcam_camera::open(...)`. The build enables `rustcam-camera/native` on
-the capability facade; app/rustcam has no direct provider dependency. Arguments, service wiring, timestamps and shutdown remain
+The native nxrs profile acquires the camera through
+`nxrs_camera::open(...)`. The build enables `nxrs-camera/native` on
+the capability facade; app/nxrs has no direct provider dependency. Arguments, service wiring, timestamps and shutdown remain
 unchanged. Replay now advertises `Camera::next_poll_at_ms()`, allowing the
 app-owned execution loop to block until the next frame deadline instead of
 polling every millisecond. Ordinary execution timekeeping continues to use
@@ -32,7 +32,7 @@ translation reused by camera, file storage and UDP. Adoption of a raw descriptor
 is unsafe and requires unique ownership; close consumes the number even when
 the driver reports an error. There is one implementation, not a copy per device.
 
-The capability root crate `rustcam-camera` re-exports the portable contract
+The capability root crate `nxrs-camera` re-exports the portable contract
 and owns provider selection. Provider crates depend only on the contract/support
 they need; they never depend back on the facade.
 

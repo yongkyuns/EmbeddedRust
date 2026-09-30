@@ -40,8 +40,8 @@ jobs:
           python3 tests/nuttx-std/udp/check-abi.py --self-test
           python3 tests/nuttx-std/udp/run.py --self-test
           bash -n tests/nuttx-std/build.sh
-          cargo +1.90.0 build --locked -p rustcam-std-udp
-          python3 tests/nuttx-std/udp/run.py --native target/debug/rustcam-std-udp --output target/udp-native
+          cargo +1.90.0 build --locked -p nxrs-std-udp
+          python3 tests/nuttx-std/udp/run.py --native target/debug/nxrs-std-udp --output target/udp-native
       - name: Build ordinary binary and reject incompatible socket ABI before boot
         shell: bash
         run: |

@@ -57,7 +57,7 @@ ln -sfn "$LIBRARY" "$RUST_ROOT/lib/rustlib/src/rust/library"
 } > "$TOOLS/environment.sh"
 source "$TOOLS/environment.sh"
 "$RUSTC" --version --verbose
-printf 'fn main() {}\n' | "$RUSTC" --crate-name rustcam_host_probe - -o "$TOOLS/host-probe"
+printf 'fn main() {}\n' | "$RUSTC" --crate-name nxrs_host_probe - -o "$TOOLS/host-probe"
 "$TOOLS/host-probe"
 xtensa-esp32s3-elf-gcc --version
 qemu-system-xtensa --version

@@ -1,5 +1,5 @@
-use rustcam_transport_api::{DeviceError, Transport};
-use rustcam_transport_mock::MockTransport;
+use nxrs_transport_api::{DeviceError, Transport};
+use nxrs_transport_mock::MockTransport;
 
 #[test]
 fn scripted_rejection_accepts_nothing_and_success_owns_the_packet() {

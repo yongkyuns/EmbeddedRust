@@ -23,9 +23,9 @@ fn receive(socket: &UdpSocket, expected: &[u8], peer: SocketAddr) -> io::Result<
 
 #[cfg(target_os = "nuttx")]
 fn qualify_packet_sink(receiver: &UdpSocket, endpoint: SocketAddr) -> io::Result<()> {
-    use rustcam_transport_api::Transport;
+    use nxrs_transport_api::Transport;
 
-    let mut sender = rustcam_transport_nuttx::UdpSender::connect(
+    let mut sender = nxrs_transport_nuttx::UdpSender::connect(
         [127, 0, 0, 1],
         endpoint.port(),
     )
@@ -40,7 +40,7 @@ fn qualify_packet_sink(receiver: &UdpSocket, endpoint: SocketAddr) -> io::Result
         .send(b"packet-sink")
         .map_err(|error| io::Error::other(format!("NuttX PacketSink send: {error:?}")))?;
     receive(receiver, b"packet-sink", source)?;
-    println!("RUSTCAM_UDP_PROVIDER_PASS");
+    println!("NXRS_UDP_PROVIDER_PASS");
     Ok(())
 }
 
@@ -83,7 +83,7 @@ fn qualify() -> io::Result<()> {
     })?;
     for n in 0..COUNT {
         receive(&receiver, &[n, 0, 127, 128, 255], source)?;
-        println!("RUSTCAM_UDP_PACKET {n} 007f80ff");
+        println!("NXRS_UDP_PACKET {n} 007f80ff");
         ack.send(n).unwrap();
     }
     worker.join().expect("UDP sender panicked")?;
@@ -117,15 +117,15 @@ fn qualify() -> io::Result<()> {
     let rebound = UdpSocket::bind(endpoint)?;
     assert_eq!(rebound.local_addr()?, endpoint);
     drop(rebound);
-    println!("RUSTCAM_UDP_REPORT {{\"messages\":16,\"joined_workers\":1,\"nonblocking\":true,\"timeout\":true,\"cloned_owner\":true,\"independent_owner\":true,\"empty_datagram\":true,\"rebind\":true}}");
+    println!("NXRS_UDP_REPORT {{\"messages\":16,\"joined_workers\":1,\"nonblocking\":true,\"timeout\":true,\"cloned_owner\":true,\"independent_owner\":true,\"empty_datagram\":true,\"rebind\":true}}");
     Ok(())
 }
 
 fn main() -> std::process::ExitCode {
-    println!("RUSTCAM_UDP_ENTERED");
+    println!("NXRS_UDP_ENTERED");
     match std::env::args().nth(1).as_deref() {
         Some("fail") => {
-            println!("RUSTCAM_UDP_INJECTED_FAILURE");
+            println!("NXRS_UDP_INJECTED_FAILURE");
             std::process::exit(7);
         }
         Some("pass") => {}
@@ -134,7 +134,7 @@ fn main() -> std::process::ExitCode {
     match qualify() {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("RUSTCAM_UDP_ERROR: {error}");
+            eprintln!("NXRS_UDP_ERROR: {error}");
             std::process::ExitCode::FAILURE
         }
     }

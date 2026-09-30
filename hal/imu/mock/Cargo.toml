@@ -1,11 +1,11 @@
 [package]
-name = "rustcam-imu-mock"
+name = "nxrs-imu-mock"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-rustcam-imu-api = { path = "../api" }
+nxrs-imu-api = { path = "../api" }
 
-[package.metadata.rustcam]
+[package.metadata.nxrs]
 mode = "synthetic-demo"
 platforms = ["std"]

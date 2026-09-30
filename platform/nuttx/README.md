@@ -1,6 +1,6 @@
 # NuttX platform integration
 
-Rustcam separates **product platforms** from reusable NuttX build mechanics.
+Nxrs separates **product platforms** from reusable NuttX build mechanics.
 
 ## Product platforms
 
@@ -22,7 +22,7 @@ cargo firmware --app event-demo --platform pico2-mock
 App entry settings come from the app's existing `Cargo.toml`; there is no
 separate deployment file.
 
-This is the Rustcam equivalent of the useful board/product-description role that
+This is the Nxrs equivalent of the useful board/product-description role that
 Zephyr's board DTS/overlays provide, without introducing Devicetree or another
 runtime configuration framework.
 

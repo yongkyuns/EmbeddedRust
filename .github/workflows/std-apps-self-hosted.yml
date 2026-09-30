@@ -33,8 +33,8 @@ concurrency:
 
 jobs:
   host:
-    if: github.repository == 'yongkyuns/rustcam' && github.actor == 'yongkyuns'
-    runs-on: [self-hosted, Linux, X64, rustcam, nuttx, isolated]
+    if: github.repository == 'yongkyuns/nxrs' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
     timeout-minutes: 15
     permissions:
       contents: read
@@ -65,10 +65,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo +1.90.0 fmt --check -p rustcam-std-demo -p rustcam-ao-stress
-          cargo +1.90.0 test --locked -p rustcam-std-demo -p rustcam-ao-stress
-          cargo +1.90.0 clippy --locked -p rustcam-std-demo -p rustcam-ao-stress --all-targets -- -D warnings
-          cargo +1.90.0 build --locked -p rustcam-std-demo -p rustcam-ao-stress
+          cargo +1.90.0 fmt --check -p nxrs-std-demo -p nxrs-ao-stress
+          cargo +1.90.0 test --locked -p nxrs-std-demo -p nxrs-ao-stress
+          cargo +1.90.0 clippy --locked -p nxrs-std-demo -p nxrs-ao-stress --all-targets -- -D warnings
+          cargo +1.90.0 build --locked -p nxrs-std-demo -p nxrs-ao-stress
           python3 -m unittest discover -s tests/host -p test_std_apps.py -v
       - name: Qualify workspace and native regressions
         shell: bash
@@ -76,44 +76,44 @@ jobs:
           set -euo pipefail
           # Adding default workspace members must also preserve existing apps.
           cargo +1.90.0 test --locked
-          cargo +1.90.0 test --locked -p rustcam-firmware
+          cargo +1.90.0 test --locked -p nxrs-firmware
           python3 -m unittest discover -s tests/host -p test_architecture.py -v
           python3 -m unittest discover -s tests/host -p test_deployment.py -v
           python3 -m unittest discover -s tests/host -p test_platform_profiles.py -v
           python3 tools/check-architecture.py
-          cargo +1.90.0 test --locked -p rustcam-applications \
-            --features rustcam-applications/cli,rustcam-camera/native,rustcam-storage/native,rustcam-transport/native --bin rustcam
-          cargo +1.90.0 run --locked -p rustcam-simulator --bin rustcam-simulator
+          cargo +1.90.0 test --locked -p nxrs-applications \
+            --features nxrs-applications/cli,nxrs-camera/native,nxrs-storage/native,nxrs-transport/native --bin nxrs
+          cargo +1.90.0 run --locked -p nxrs-simulator --bin nxrs-simulator
           python3 tests/host/test-native-runner.py
           cargo +1.90.0 clippy --locked \
-            -p rustcam-camera -p rustcam-storage -p rustcam-transport \
-            -p rustcam-camera-api -p rustcam-storage-api -p rustcam-transport-api \
-            -p rustcam-camera-native -p rustcam-storage-native -p rustcam-transport-native \
-            -p rustcam-services -p rustcam-applications \
-            --features rustcam-applications/cli,rustcam-camera/native,rustcam-storage/native,rustcam-transport/native --lib --bins -- -D warnings
-          cargo +1.90.0 check --locked -p rustcam-applications --no-default-features --lib --target thumbv6m-none-eabi
-          cargo +1.90.0 build --locked --release --lib -p rustcam-simulator --target wasm32-unknown-unknown
+            -p nxrs-camera -p nxrs-storage -p nxrs-transport \
+            -p nxrs-camera-api -p nxrs-storage-api -p nxrs-transport-api \
+            -p nxrs-camera-native -p nxrs-storage-native -p nxrs-transport-native \
+            -p nxrs-services -p nxrs-applications \
+            --features nxrs-applications/cli,nxrs-camera/native,nxrs-storage/native,nxrs-transport/native --lib --bins -- -D warnings
+          cargo +1.90.0 check --locked -p nxrs-applications --no-default-features --lib --target thumbv6m-none-eabi
+          cargo +1.90.0 build --locked --release --lib -p nxrs-simulator --target wasm32-unknown-unknown
       - name: Check firmware discovery and app isolation
         shell: bash
         run: |
           set -euo pipefail
-          cargo +1.90.0 firmware --list-apps | tee /tmp/rustcam-std-apps.txt
-          grep -x std-demo /tmp/rustcam-std-apps.txt
-          grep -x ao-stress /tmp/rustcam-std-apps.txt
+          cargo +1.90.0 firmware --list-apps | tee /tmp/nxrs-std-apps.txt
+          grep -x std-demo /tmp/nxrs-std-apps.txt
+          grep -x ao-stress /tmp/nxrs-std-apps.txt
           for app in std-demo ao-stress; do
             for platform in pico2-mock mps2-an521-mock esp32s3-qemu-mock; do
               cargo +1.90.0 firmware --app "$app" --platform "$platform" --dry-run
             done
-            cargo +1.90.0 tree --locked -p "rustcam-$app" > "/tmp/$app-tree.txt"
-            ! grep -E 'rustcam-(imu|gnss|camera|storage|transport)' "/tmp/$app-tree.txt"
+            cargo +1.90.0 tree --locked -p "nxrs-$app" > "/tmp/$app-tree.txt"
+            ! grep -E 'nxrs-(imu|gnss|camera|storage|transport)' "/tmp/$app-tree.txt"
           done
       - name: Record release behavior
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p target/std-apps
-          cargo +1.90.0 run --locked --release -p rustcam-std-demo --bin std-demo | tee target/std-apps/std-demo.log
-          cargo +1.90.0 run --locked --release -p rustcam-ao-stress --bin ao-stress -- --duration-ms 1000 --rounds 2 | tee target/std-apps/ao-stress.log
+          cargo +1.90.0 run --locked --release -p nxrs-std-demo --bin std-demo | tee target/std-apps/std-demo.log
+          cargo +1.90.0 run --locked --release -p nxrs-ao-stress --bin ao-stress -- --duration-ms 1000 --rounds 2 | tee target/std-apps/ao-stress.log
       - name: Record CI failure annotations without changing check results
         if: always()
         shell: bash
@@ -176,12 +176,12 @@ jobs:
 
   arm-firmware:
     needs: host
-    if: github.repository == 'yongkyuns/rustcam' && github.actor == 'yongkyuns'
+    if: github.repository == 'yongkyuns/nxrs' && github.actor == 'yongkyuns'
     strategy:
       fail-fast: false
       matrix:
         app: [std-demo, ao-stress]
-    runs-on: [self-hosted, Linux, X64, rustcam, nuttx, isolated]
+    runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
     timeout-minutes: 35
     steps:
       - name: Verify isolated Linux runner

@@ -1,4 +1,4 @@
-//! Minimal bounded event transport for active Rustcam entities.
+//! Minimal bounded event transport for active Nxrs entities.
 //!
 //! This is intentionally a thin ownership wrapper around
 //! `std::sync::mpsc::sync_channel`: many producers clone an `EventSender<E>`,

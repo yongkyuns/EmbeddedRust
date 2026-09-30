@@ -1,6 +1,6 @@
 use std::io::ErrorKind;
 
-use rustcam_navigation_services::{FusionService, GnssService, ImuService};
+use nxrs_navigation_services::{FusionService, GnssService, ImuService};
 
 #[test]
 fn sensor_services_fail_without_selected_providers() {

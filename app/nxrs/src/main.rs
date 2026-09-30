@@ -6,10 +6,10 @@ use std::io;
 use std::sync::mpsc::RecvTimeoutError;
 use std::time::{Duration, Instant};
 
-use rustcam_applications::{CameraProduct, ConsumerReport};
-use rustcam_camera::{DeviceError, Format, PixelFormat};
-use rustcam_service_event::{bounded, EventInbox};
-use rustcam_services::Error;
+use nxrs_applications::{CameraProduct, ConsumerReport};
+use nxrs_camera::{DeviceError, Format, PixelFormat};
+use nxrs_service_event::{bounded, EventInbox};
+use nxrs_services::Error;
 
 const FRAME_BYTES: usize = 65_536;
 const HISTORY: usize = 2;
@@ -65,7 +65,7 @@ fn timeout_until(now_ms: u64, deadline_ms: u64) -> Duration {
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.len() != 7 {
-        return Err("usage: rustcam <packed.raw> <width> <height> <gray8|rgb565> <period-ms> <new-output-dir> <udp-address:port>".into());
+        return Err("usage: nxrs <packed.raw> <width> <height> <gray8|rgb565> <period-ms> <new-output-dir> <udp-address:port>".into());
     }
     let format = Format {
         width: args[1].parse()?,
@@ -82,13 +82,13 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let period_ms: u64 = args[4].parse()?;
     let (camera, frames) =
-        rustcam_camera::open(&args[0], format, period_ms, MAX_SOURCE_BYTES)?;
+        nxrs_camera::open(&args[0], format, period_ms, MAX_SOURCE_BYTES)?;
     let deadline_ms = frames
         .checked_mul(period_ms)
         .and_then(|n| n.checked_add(10_000))
         .ok_or("replay duration overflow")?;
-    let transport = rustcam_transport::open(&args[6])?;
-    let storage = rustcam_storage::open(&args[5], 4, FRAME_BYTES, frames)?;
+    let transport = nxrs_transport::open(&args[6])?;
+    let storage = nxrs_storage::open(&args[5], 4, FRAME_BYTES, frames)?;
 
     // Payloads are allocated directly in the heap. Boxing an already-built
     // inline product would still permit large startup stack temporaries.
@@ -254,7 +254,7 @@ fn main() -> std::process::ExitCode {
     match run() {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("rustcam: {error}");
+            eprintln!("nxrs: {error}");
             std::process::ExitCode::FAILURE
         }
     }
@@ -263,7 +263,7 @@ fn main() -> std::process::ExitCode {
 #[cfg(test)]
 mod tests {
     use super::{frame_buffer, wait_owner};
-    use rustcam_service_event::bounded;
+    use nxrs_service_event::bounded;
     use std::time::Duration;
 
     #[test]

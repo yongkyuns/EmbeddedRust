@@ -190,7 +190,7 @@ def run(args):
                     verify_success(q)
                 elif mode == 'fail':
                     assert q['exitCode'] == 7 and q['reports'] == [] and q['entries'] == 1
-                    assert any('RUSTCAM_INJECTED_FAILURE' in e for e in q['errors'])
+                    assert any('NXRS_INJECTED_FAILURE' in e for e in q['errors'])
                 else:
                     assert not q['isolated'] and q['phase'] == 'unsupported'
                     assert q['entries'] == 0 and q['reports'] == []

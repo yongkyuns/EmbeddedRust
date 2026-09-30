@@ -3,23 +3,23 @@
 Two independent ordinary `main()` binaries. Each is a complete selected firmware
 app, not a plugin in another app, a platform launcher, or a new actor framework.
 Neither app depends on a HAL provider. `ao-stress` uses the existing
-`rustcam-service-event` bounded inbox unchanged. No new third-party dependencies.
+`nxrs-service-event` bounded inbox unchanged. No new third-party dependencies.
 
 ## Run on a host
 
 ```sh
-cargo run --locked -p rustcam-std-demo --bin std-demo
-cargo run --locked -p rustcam-std-demo --bin std-demo -- --list
-cargo run --locked -p rustcam-std-demo --bin std-demo -- --case channels
-cargo run --locked -p rustcam-ao-stress --bin ao-stress
-cargo run --locked --release -p rustcam-ao-stress --bin ao-stress -- \
+cargo run --locked -p nxrs-std-demo --bin std-demo
+cargo run --locked -p nxrs-std-demo --bin std-demo -- --list
+cargo run --locked -p nxrs-std-demo --bin std-demo -- --case channels
+cargo run --locked -p nxrs-ao-stress --bin ao-stress
+cargo run --locked --release -p nxrs-ao-stress --bin ao-stress -- \
   --scenario burst --duration-ms 2000 --producers 4 --workers 4 --capacity 32
-cargo run --locked --release -p rustcam-ao-stress --bin ao-stress -- \
+cargo run --locked --release -p nxrs-ao-stress --bin ao-stress -- \
   --scenario slow-consumer --capacity 1 --rounds 10
 ```
 
 These are `std`/threaded native or NuttX apps. They are **not** advertised as
-single-threaded `wasm32-unknown-unknown` browser apps. Rustcam's separate browser
+single-threaded `wasm32-unknown-unknown` browser apps. Nxrs's separate browser
 thread qualification is not changed here. Do not run these blocking entry points
 on a browser UI thread.
 
@@ -160,10 +160,10 @@ Pico/ESP32 performance, or reliability claim follows merely from passing.
 ## Qualification
 
 ```sh
-cargo test --locked -p rustcam-std-demo -p rustcam-ao-stress
-cargo build --locked -p rustcam-std-demo -p rustcam-ao-stress
+cargo test --locked -p nxrs-std-demo -p nxrs-ao-stress
+cargo build --locked -p nxrs-std-demo -p nxrs-ao-stress
 python3 -m unittest discover -s tests/host -p test_std_apps.py -v
-cargo clippy --locked -p rustcam-std-demo -p rustcam-ao-stress --all-targets -- -D warnings
+cargo clippy --locked -p nxrs-std-demo -p nxrs-ao-stress --all-targets -- -D warnings
 ```
 
 Tests cover collection limits/ownership, channel semantics, histograms, accounting

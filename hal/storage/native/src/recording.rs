@@ -6,7 +6,7 @@ use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError, TrySendE
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 
-use rustcam_storage_api::{Capture, DeviceError, Format, Frame, PixelFormat, Storage};
+use nxrs_storage_api::{Capture, DeviceError, Format, Frame, PixelFormat, Storage};
 
 use crate::{device_error, invalid};
 
@@ -208,7 +208,7 @@ impl FileRecorder {
         let failed = Arc::new(AtomicBool::new(false));
         let worker_failed = Arc::clone(&failed);
         let worker = thread::Builder::new()
-            .name("rustcam-file-writer".into())
+            .name("nxrs-file-writer".into())
             .spawn(move || {
                 let mut result = Ok(());
                 for work in receiver {

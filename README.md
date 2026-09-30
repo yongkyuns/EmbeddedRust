@@ -1,4 +1,4 @@
-# rustcam
+# nxrs
 
 Portable Rust firmware apps composed from reusable services, with device and
 operating-system I/O behind common HAL contracts.
@@ -12,16 +12,16 @@ and Monitor are workflows, not separate applications. There is no platform
 launcher, app registry, required App trait, or service-graph configuration language.
 
 The native replay profile acquires camera, storage and transport through the
-capability-local `rustcam-camera`, `rustcam-storage`, and
-`rustcam-transport` facades. `app/rustcam/src/main.rs` still owns product
+capability-local `nxrs-camera`, `nxrs-storage`, and
+`nxrs-transport` facades. `app/nxrs/src/main.rs` still owns product
 composition, while concrete replay/file/UDP providers stay below those facades.
 Filesystem and socket construction remain inside providers; ordinary timekeeping
 uses `std::time` directly.
 
 ```sh
-cargo run --locked -p rustcam-applications \
-  --features rustcam-applications/cli,rustcam-camera/native,rustcam-storage/native,rustcam-transport/native \
-  --bin rustcam -- \
+cargo run --locked -p nxrs-applications \
+  --features nxrs-applications/cli,nxrs-camera/native,nxrs-storage/native,nxrs-transport/native \
+  --bin nxrs -- \
   input.gray 2 2 gray8 10 new-recording-directory 127.0.0.1:9000
 ```
 
@@ -29,7 +29,7 @@ The app's `cli` feature admits the binary and its std-backed bounded owner wait
 transport. Provider selection remains independent on each HAL capability facade.
 The existing no_std library target selects neither the CLI runtime nor a provider.
 It is a migration/testing compatibility target, not a mandatory app framework.
-The application package is named `rustcam-applications` under `app/rustcam`.
+The application package is named `nxrs-applications` under `app/nxrs`.
 
 This does **not** yet port the camera app binary to NuttX or the browser. The
 separate ordinary-main/std probes qualify those execution environments. The
@@ -43,7 +43,7 @@ thread boundary.
 
 | Directory | Responsibility |
 | --- | --- |
-| `app/rustcam` | Normal binary, portable workflow modules and existing composition |
+| `app/nxrs` | Normal binary, portable workflow modules and existing composition |
 | `service` | Reusable camera, recording and telemetry service modules |
 | `hal/imu`, `hal/gnss`, `hal/camera`, `hal/storage`, `hal/transport` | Capability-local public facades, provider-independent `api/` contracts, and optional concrete providers |
 | `hal/common`, `hal/support/nuttx` | Shared error values and narrow NuttX provider support |
@@ -71,12 +71,12 @@ it does not depend on IMU/GNSS HALs, mock providers, or concrete devices.
 bash tools/run-event-demo-mock.sh --duration-ms 2000
 ```
 
-The helper explicitly selects `rustcam-imu/mock` and `rustcam-gnss/mock`.
+The helper explicitly selects `nxrs-imu/mock` and `nxrs-gnss/mock`.
 `ImuService::start()` and `GnssService::start()` acquire those capabilities
 internally and move the resources into owner threads. Selecting future physical
 providers does not change app/service source.
 
-IMU, GNSS, and fusion use the shared std-backed `rustcam-service-event`
+IMU, GNSS, and fusion use the shared std-backed `nxrs-service-event`
 transport: one bounded inbox and one wait point per active owner, cloned typed
 producers for fan-in, run-to-completion handlers, explicit overload behavior,
 and joined shutdown. `HealthService` remains synchronous. HAL contracts/facades remain `no_std`; active
@@ -86,7 +86,7 @@ services use the qualified Rust `std` execution model. See
 ### Multi-app / multi-instance proof
 
 `app/dual-imu-demo` is a second ordinary firmware app that reuses the same
-`rustcam-navigation-services` package but composes a different product graph:
+`nxrs-navigation-services` package but composes a different product graph:
 two `ImuService` instances and two `FusionService` instances. Each IMU service
 independently calls the HAL acquisition path at `start()`; with the mock
 platform both instances begin at sequence 1, proving there is no shared singleton
@@ -97,7 +97,7 @@ bash tools/run-dual-imu-demo-mock.sh
 ~~~
 
 The demo pauses one IMU while the other continues, then resumes it. CI also
-proves that the IMU-only image does not inherit `rustcam-gnss-mock` from
+proves that the IMU-only image does not inherit `nxrs-gnss-mock` from
 `app/event-demo`, and that running without an IMU provider fails explicitly
 instead of silently selecting a mock.
 
@@ -143,7 +143,7 @@ target/firmware/event-demo/mps2-an521-mock/nuttx/nuttx
 ~~~
 
 `cargo firmware` is a repository Cargo alias backed by the small
-`rustcam-firmware` host tool. It resolves:
+`nxrs-firmware` host tool. It resolves:
 
 ~~~text
 app Cargo metadata
@@ -160,7 +160,7 @@ Cargo Rust build + NuttX final image
 The app manifest owns only firmware-entry properties such as binary name,
 NuttX command name, priority and stack size. The platform profile owns board,
 Rust target, toolchain, Kconfig and HAL provider selection. Developers do not
-pass individual `rustcam-imu/mock`, target triples or Kconfig values.
+pass individual `nxrs-imu/mock`, target triples or Kconfig values.
 
 The common `tools/build-nuttx-std-app.sh` remains an internal backend because
 NuttX configuration, Make, ABI inspection and final image linking are not Cargo
@@ -200,10 +200,10 @@ NuttX resource probe is a non-default workspace member and builds its own image.
 
 ```sh
 cargo test --locked
-cargo run --locked -p rustcam-simulator
+cargo run --locked -p nxrs-simulator
 python3 tools/check-architecture.py
 python3 tests/host/test-native-runner.py
-cargo check --locked -p rustcam-applications --no-default-features --lib \
+cargo check --locked -p nxrs-applications --no-default-features --lib \
   --target thumbv6m-none-eabi
 ```
 

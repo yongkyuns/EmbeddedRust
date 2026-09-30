@@ -1,4 +1,4 @@
-use rustcam_storage_api::{Frame, Storage};
+use nxrs_storage_api::{Frame, Storage};
 use crate::{Error, SinkStats};
 
 pub trait Recordings {

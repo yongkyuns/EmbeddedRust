@@ -1,12 +1,12 @@
 # Keep the established command/config name for compatibility with sim CI.
-config EXAMPLES_RUSTCAM_SIM
-	bool "Rustcam portable NuttX integration qualification"
+config EXAMPLES_NXRS_SIM
+	bool "Nxrs portable NuttX integration qualification"
 	default n
 	depends on ARCH_SIM || ARCH_CHIP_ESP32S3
 
-config EXAMPLES_RUSTCAM_PREEMPTION
+config EXAMPLES_NXRS_PREEMPTION
 	bool "Qualify timer-driven preemption of a CPU-bound FIFO task"
-	depends on EXAMPLES_RUSTCAM_SIM && !SMP
+	depends on EXAMPLES_NXRS_SIM && !SMP
 	default y if ARCH_CHIP_ESP32S3
 	default n
 	---help---

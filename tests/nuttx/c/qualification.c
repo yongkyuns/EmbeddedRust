@@ -47,7 +47,7 @@ static int check_abi(void)
   return 0;
 }
 
-#ifdef CONFIG_EXAMPLES_RUSTCAM_PREEMPTION
+#ifdef CONFIG_EXAMPLES_NXRS_PREEMPTION
 _Static_assert(ATOMIC_INT_LOCK_FREE == 2, "test loop needs lock-free integer atomics");
 
 struct preemption
@@ -169,7 +169,7 @@ cleanup:
 int rc_target_qualify(void)
 {
   if (check_abi() != 0) return -1;
-#ifdef CONFIG_EXAMPLES_RUSTCAM_PREEMPTION
+#ifdef CONFIG_EXAMPLES_NXRS_PREEMPTION
   unsigned int work = 0;
   unsigned int control_work = 0;
   if (preemption_trial(0, &work) != 0 || preemption_trial(1, &control_work) != 0)

@@ -9,7 +9,7 @@ pub mod telemetry;
 pub use camera::{CameraService, CameraState, CaptureProgress, Frames};
 pub use recording::{RecordingService, Recordings};
 pub use telemetry::{payload_checksum, Telemetry, TelemetryService, SUMMARY_BYTES};
-use rustcam_camera_api::DeviceError;
+use nxrs_camera_api::DeviceError;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Error {

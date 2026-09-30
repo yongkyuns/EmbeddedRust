@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
-#ifndef RUSTCAM_NUTTX_CAMERA_H
-#define RUSTCAM_NUTTX_CAMERA_H
+#ifndef NXRS_NUTTX_CAMERA_H
+#define NXRS_NUTTX_CAMERA_H
 #include <stddef.h>
 #include <stdint.h>
 

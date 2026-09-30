@@ -1,4 +1,4 @@
-use rustcam_services::{Error, Frames};
+use nxrs_services::{Error, Frames};
 use crate::{AppState, AppStats, Progress};
 
 #[derive(Default)]

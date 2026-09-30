@@ -13,7 +13,7 @@ RTOS scheduling, DMA, physical images and actual network delivery still require
 adapter and hardware qualification.
 
 The firmware model is one selected app per production MCU image. In this slice,
-Recorder and Monitor are workflows inside `app/rustcam`, not separate runtime
+Recorder and Monitor are workflows inside `app/nxrs`, not separate runtime
 apps. `CameraProduct` is the existing composition type; its name and source path
 remain unchanged. The target app interface is a normal Cargo binary with its own
 handwritten `src/main.rs` and `fn main()`, not a library hosted by a platform
@@ -28,12 +28,12 @@ implemented by this documentation update.
 The current production direction is capability-first:
 
 ```text
-rustcam-applications -> rustcam-services
-                     -> rustcam-camera / rustcam-storage / rustcam-transport
+nxrs-applications -> nxrs-services
+                     -> nxrs-camera / nxrs-storage / nxrs-transport
                           -> provider-independent api contract
                           -> one build-selected provider
 
-service/navigation   -> rustcam-imu / rustcam-gnss
+service/navigation   -> nxrs-imu / nxrs-gnss
                           -> provider-independent api contract
                           -> one build-selected provider
 ```
@@ -43,10 +43,10 @@ the natural ownership boundary. Neither may depend on concrete native/mock/NuttX
 provider crates. Provider packages are capability-scoped optional dependencies
 selected by the build on the corresponding facade.
 
-For the native rustcam profile, main acquires camera/storage/transport through
+For the native nxrs profile, main acquires camera/storage/transport through
 their capability facades and transfers ownership into the existing generic
 services. For the event demo, IMU/GNSS services acquire their resources
-internally from `rustcam-imu` and `rustcam-gnss`. No HAL facade constructs
+internally from `nxrs-imu` and `nxrs-gnss`. No HAL facade constructs
 services or owns application lifecycle, and there is no global HAL package.
 
 Selected images exclude unselected HAL provider implementations and their
@@ -174,7 +174,7 @@ one another. One app does not require all its services to share one thread.
 The target main explicitly starts the loops/threads it needs. Prefer ordinary
 std threads and bounded channels on NuttX/native and the selected pthread-enabled
 Emscripten browser profile. The separate
-[browser thread probe](https://github.com/yongkyuns/rustcam/actions/runs/36274987242)
+[browser thread probe](https://github.com/yongkyuns/nxrs/actions/runs/36274987242)
 passed in actual Chrome and Safari at `7511b1c`; the roadmap records its exact
 scope. This does not migrate the current production services or qualify browser I/O.
 No custom thread API, mandatory cooperative executor, generic actor framework,
@@ -212,12 +212,12 @@ not required unless another concrete use needs it.
 The root toolchain is pinned to Rust 1.90.0. Current portable commands are:
 
 ```sh
-cargo +1.90.0 test --locked -p rustcam-simulator
-cargo +1.90.0 run --locked -p rustcam-simulator
+cargo +1.90.0 test --locked -p nxrs-simulator
+cargo +1.90.0 run --locked -p nxrs-simulator
 rustup target add --toolchain 1.90.0 thumbv6m-none-eabi wasm32-unknown-unknown
-cargo +1.90.0 check --locked -p rustcam-applications --target thumbv6m-none-eabi
-cargo +1.90.0 build --locked --release --lib -p rustcam-simulator --target wasm32-unknown-unknown
-node tests/browser/run-wasm-scenarios.mjs target/wasm32-unknown-unknown/release/rustcam_simulator.wasm
+cargo +1.90.0 check --locked -p nxrs-applications --target thumbv6m-none-eabi
+cargo +1.90.0 build --locked --release --lib -p nxrs-simulator --target wasm32-unknown-unknown
+node tests/browser/run-wasm-scenarios.mjs target/wasm32-unknown-unknown/release/nxrs_simulator.wasm
 ```
 
 For real browser execution install `playwright@1.56.1`, run

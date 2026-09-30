@@ -1,4 +1,4 @@
-config EXAMPLES_RUSTCAM_STD_APP
-	bool "Rustcam ordinary Rust std application"
+config EXAMPLES_NXRS_STD_APP
+	bool "Nxrs ordinary Rust std application"
 	default n
 	depends on BUILD_FLAT && !DISABLE_PTHREAD

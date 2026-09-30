@@ -4,17 +4,17 @@
 
 ## Core rule
 
-Rustcam has no global HAL platform package or universal HAL object.
+Nxrs has no global HAL platform package or universal HAL object.
 
 Each capability owns its public facade and its provider selection:
 
 ~~~text
-hal/imu/             -> rustcam-imu
+hal/imu/             -> nxrs-imu
   api/               -> provider-independent Imu/ImuSample contract
   mock/              -> synthetic provider
   <future provider>/ -> physical/native/web implementation
 
-hal/camera/          -> rustcam-camera
+hal/camera/          -> nxrs-camera
   api/
   native/
   nuttx/
@@ -22,8 +22,8 @@ hal/camera/          -> rustcam-camera
 ~~~
 
 Portable applications and services depend on capability facades such as
-`rustcam-imu`, `rustcam-camera`, `rustcam-storage`, and
-`rustcam-transport`. They do not depend on concrete provider crates.
+`nxrs-imu`, `nxrs-camera`, `nxrs-storage`, and
+`nxrs-transport`. They do not depend on concrete provider crates.
 
 Provider selection is a build/deployment decision implemented through features
 on each capability facade. Production deployments should normally not enumerate
@@ -65,14 +65,14 @@ Examples:
 
 ~~~text
 ImuService
-  -> rustcam-imu
-       -> rustcam-imu-api
-       -> rustcam-imu-mock          # selected by build
+  -> nxrs-imu
+       -> nxrs-imu-api
+       -> nxrs-imu-mock          # selected by build
 
-app/rustcam
-  -> rustcam-camera
-       -> rustcam-camera-api
-       -> rustcam-camera-native     # selected by build
+app/nxrs
+  -> nxrs-camera
+       -> nxrs-camera-api
+       -> nxrs-camera-native     # selected by build
 ~~~
 
 The application/service source sees the capability, not the provider identity.
@@ -152,7 +152,7 @@ For a service-owned sensor:
 ~~~text
 app
   -> ImuService::start()
-       -> rustcam_imu::open()
+       -> nxrs_imu::open()
             -> selected IMU provider
 ~~~
 
@@ -160,19 +160,19 @@ For the current native camera profile, the app is the natural composition and
 configuration boundary:
 
 ~~~text
-app/rustcam
-  -> rustcam_camera::open(...)
+app/nxrs
+  -> nxrs_camera::open(...)
   -> CameraService(camera)
 
-  -> rustcam_storage::open(...)
+  -> nxrs_storage::open(...)
   -> RecordingService(storage)
 
-  -> rustcam_transport::open(...)
+  -> nxrs_transport::open(...)
   -> TelemetryService(transport)
 ~~~
 
 Both are valid. The important boundary is that neither app nor service names
-`rustcam-*-native`, `rustcam-*-nuttx`, `rustcam-*-mock`, a concrete sensor,
+`nxrs-*-native`, `nxrs-*-nuttx`, `nxrs-*-mock`, a concrete sensor,
 or a bus/IRQ implementation.
 
 ## Capability configuration
@@ -218,11 +218,11 @@ force product policy to import concrete backend packages.
 
 ## Current migration state
 
-- IMU/GNSS services depend on `rustcam-imu` and `rustcam-gnss`; their mock
+- IMU/GNSS services depend on `nxrs-imu` and `nxrs-gnss`; their mock
   providers are selected by build profiles.
-- app/rustcam depends on `rustcam-camera`, `rustcam-storage`, and
-  `rustcam-transport`; the native providers are selected by the build.
-- the former global `rustcam-hal` / `hal/platform` package has been removed.
+- app/nxrs depends on `nxrs-camera`, `nxrs-storage`, and
+  `nxrs-transport`; the native providers are selected by the build.
+- the former global `nxrs-hal` / `hal/platform` package has been removed.
 - low-level provider qualification tests may still depend on a provider directly,
   because the provider itself is what those tests are qualifying.
 
