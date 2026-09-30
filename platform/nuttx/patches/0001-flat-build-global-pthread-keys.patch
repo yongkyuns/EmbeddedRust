@@ -1,10 +1,11 @@
 From: nxrs maintainers <noreply@github.com>
-Subject: [PATCH] libc: optionally share pthread keys across flat task groups
+Subject: [PATCH] libc: support image-wide pthread keys and deferred cleanup
 
 Rust std caches pthread keys in image-wide statics. In flat builds the image
 outlives an NSH application task group, so a later group can use the cached
-key without registering its destructor. Make the key namespace and destructor
-table image-wide when explicitly selected. The TLS values remain per-thread.
+key without registering its destructor. Its guard also defers thread cleanup
+to a later TLS destructor pass. Provide opt-in image-wide key lifetime and
+configurable destructor passes; TLS values remain per-thread.
 
 diff --git a/include/nuttx/tls.h b/include/nuttx/tls.h
 index 4159035d00..65d8a3fa6f 100644
@@ -203,10 +204,10 @@ index a8e5ceaffb..65e945835d 100644
  
    return ret;
 diff --git a/libs/libc/tls/Kconfig b/libs/libc/tls/Kconfig
-index 65627e2d49..fef90454c0 100644
+index 65627e2d49..89c7c2f5f5 100644
 --- a/libs/libc/tls/Kconfig
 +++ b/libs/libc/tls/Kconfig
-@@ -55,6 +55,17 @@ config TLS_NELEM
+@@ -55,6 +55,28 @@ config TLS_NELEM
  		NOTE that the special value of CONFIG_TLS_NELEM disables these
  		TLS interfaces.
  
@@ -221,14 +222,33 @@ index 65627e2d49..fef90454c0 100644
 +		TLS values remain private to each thread. The configured key limit
 +		then applies to the whole image rather than to each task group.
 +
++config TLS_DTOR_ITERATIONS
++	int "Maximum pthread TLS destructor passes"
++	depends on TLS_NELEM > 0
++	default 1
++	range 1 16
++	---help---
++		Run up to this many passes of thread-specific destructors at
++		thread exit. A destructor may set another TLS value, including its
++		own key, for a later pass. Four passes support runtimes that defer
++		thread cleanup until earlier destructors have completed.
++
  config TLS_TASK_NELEM
  	int "Number of Task Local Storage elements"
  	depends on !BUILD_KERNEL
 diff --git a/libs/libc/tls/tls_destruct.c b/libs/libc/tls/tls_destruct.c
-index d968d707cb..706022f024 100644
+index d968d707cb..3a7ba934c5 100644
 --- a/libs/libc/tls/tls_destruct.c
 +++ b/libs/libc/tls/tls_destruct.c
-@@ -52,20 +52,28 @@
+@@ -27,6 +27,7 @@
+ #include <nuttx/config.h>
+ 
+ #include <assert.h>
++#include <stdbool.h>
+ 
+ #include <nuttx/tls.h>
+ 
+@@ -52,26 +53,45 @@
  
  void tls_destruct(void)
  {
@@ -239,21 +259,46 @@ index d968d707cb..706022f024 100644
    FAR void *tls_elem_ptr = NULL;
    tls_dtor_t destructor;
    int candidate;
++  int pass;
++  bool invoked;
  
 +#ifndef CONFIG_TLS_GLOBAL_KEYS
    DEBUGASSERT(info != NULL);
 +#endif
  
-   for (candidate = CONFIG_TLS_NELEM - 1; candidate >= 0; candidate--)
+-  for (candidate = CONFIG_TLS_NELEM - 1; candidate >= 0; candidate--)
++  for (pass = 0; pass < CONFIG_TLS_DTOR_ITERATIONS; pass++)
      {
-       /* Is this candidate index available? */
- 
-       tls_elem_ptr = (FAR void *)tls->tl_elem[candidate];
-+#ifdef CONFIG_TLS_GLOBAL_KEYS
-+      destructor = tls_global_key_dtor(candidate);
-+#else
-       destructor = info->ta_tlsdtor[candidate];
-+#endif
-       if (tls_elem_ptr && destructor)
+-      /* Is this candidate index available? */
+-
+-      tls_elem_ptr = (FAR void *)tls->tl_elem[candidate];
+-      destructor = info->ta_tlsdtor[candidate];
+-      if (tls_elem_ptr && destructor)
++      invoked = false;
++      for (candidate = CONFIG_TLS_NELEM - 1; candidate >= 0; candidate--)
          {
-           destructor(tls_elem_ptr);
+-          destructor(tls_elem_ptr);
++          tls_elem_ptr = (FAR void *)tls->tl_elem[candidate];
++          /* Clear before the callback so a new value survives this pass. */
++
++          tls->tl_elem[candidate] = 0;
++#ifdef CONFIG_TLS_GLOBAL_KEYS
++          destructor = tls_global_key_dtor(candidate);
++#else
++          destructor = info->ta_tlsdtor[candidate];
++#endif
++          if (tls_elem_ptr && destructor)
++            {
++              destructor(tls_elem_ptr);
++              invoked = true;
++            }
+         }
+ 
+-      tls->tl_elem[candidate] = 0;
++      if (!invoked)
++        {
++          break;
++        }
+     }
+ }
+ 

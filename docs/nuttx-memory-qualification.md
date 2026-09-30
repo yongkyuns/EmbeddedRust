@@ -104,9 +104,11 @@ configuration comparison.
 
 The opt-in `CONFIG_TLS_GLOBAL_KEYS` change uses an image-wide pthread key
 namespace and destructor table in flat builds. Per-thread TLS values remain
-per-thread. NuttX's default group-local behavior remains unchanged when the
-option is disabled. All nxrs Rust std firmware builds require the option; it
-is not an unconditional change to upstream NuttX. The global key limit is
+per-thread. Rust std's key-based TLS guard defers `thread_cleanup` until a
+later destructor pass, so the build also sets `CONFIG_TLS_DTOR_ITERATIONS=4`
+and clears each TLS value before invoking its destructor. Both options default
+to the prior NuttX behavior when not selected by nxrs. All nxrs Rust std
+firmware builds require these settings. The global key limit is
 `CONFIG_TLS_NELEM` for the whole image, which is appropriate for the cached
 keys in this linked runtime but should be considered before upstreaming.
 
