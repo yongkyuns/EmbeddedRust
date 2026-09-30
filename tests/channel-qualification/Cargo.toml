@@ -1,0 +1,68 @@
+[package]
+name = "nxrs-channel-qualification"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[package.metadata.nxrs.firmware]
+bin = "cq-select"
+command = "cq_probe"
+priority = 100
+stack-size = 65536
+
+[dependencies]
+crossbeam-channel = { version = "=0.5.17", default-features = false, features = ["std"] }
+nxrs-allocation-probe = { path = "../allocation-probe", optional = true }
+
+[features]
+default = []
+memory-probe = ["dep:nxrs-allocation-probe"]
+
+[[bin]]
+name = "cq-core"
+path = "src/core.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "cq-std"
+path = "src/minimal.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "cq-thread"
+path = "src/thread.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "cq-std-channel"
+path = "src/std_channel.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "cq-crossbeam"
+path = "src/crossbeam.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "cq-select"
+path = "src/select.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "cq-coexist"
+path = "src/coexist.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "cq-memory"
+path = "src/memory.rs"
+required-features = ["memory-probe"]
+test = false
+bench = false

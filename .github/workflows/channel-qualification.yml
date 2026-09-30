@@ -1,0 +1,117 @@
+name: Channel allocation and footprint qualification
+on:
+  push:
+    branches: [main, 'qualify/channel-footprint']
+    paths: ['tests/channel-qualification/**', 'tests/allocation-probe/**', 'tests/rtos-bench/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/channel-qualification.yml', 'tools/build-nuttx-std-app.sh']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: channel-qualification-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  host:
+    if: github.repository == 'yongkyuns/EmbeddedRust' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, EmbeddedRust, nuttx, isolated]
+    timeout-minutes: 20
+    steps:
+      - name: Verify isolated runner
+        run: |
+          set -eu
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          ! mount | grep -F '/Users/' >/dev/null
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Pinned Rust
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.cargo/bin:$PATH"
+          command -v rustup
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          rustup toolchain install 1.90.0 --profile minimal
+      - name: Comparison guards and raw-channel functional tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/channel-qualification -p test_footprint.py -v
+          cargo +1.90.0 test --locked -p nxrs-channel-qualification --lib
+      - name: Fresh-process allocator phases
+        shell: bash
+        run: |
+          set -euo pipefail
+          CARGO_TARGET_DIR="$GITHUB_WORKSPACE/target/channel-memory" cargo +1.90.0 build --locked --release -p nxrs-channel-qualification --features memory-probe --bin cq-memory
+          mkdir -p target/channel-memory-results
+          failed=0
+          for mode in std crossbeam select; do
+            if ! timeout 30 target/channel-memory/release/cq-memory "$mode" > "target/channel-memory-results/$mode.log" 2>&1; then
+              cat "target/channel-memory-results/$mode.log"
+              failed=1
+            fi
+          done
+          exit "$failed"
+      - name: Uninstrumented native footprint matrix
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tests/channel-qualification/build.py native
+          cat target/channel-qualification/native/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: channel-qualification-host-${{ github.sha }}
+          path: |
+            target/channel-memory-results/
+            target/channel-qualification/native/*.*
+            target/channel-qualification/native/c*/*
+            !target/channel-qualification/native/cargo/**
+  firmware:
+    needs: host
+    if: github.repository == 'yongkyuns/EmbeddedRust' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, EmbeddedRust, nuttx, isolated]
+    timeout-minutes: 120
+    steps:
+      - name: Verify isolated runner
+        run: |
+          set -eu
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          ! mount | grep -F '/Users/' >/dev/null
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          submodules: true
+          persist-credentials: false
+      - name: ARM build prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi bison flex gperf kconfig-frontends genromfs libncurses-dev python3 python3-venv build-essential
+          export PATH="$HOME/.cargo/bin:$PATH"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          rustup toolchain install 1.90.0 --profile minimal
+          rustup toolchain install nightly-2025-09-15 --profile minimal --component rust-src
+          python3 -m venv target/channel-venv
+          target/channel-venv/bin/pip install kconfiglib==14.1.0
+          echo "$GITHUB_WORKSPACE/target/channel-venv/bin" >> "$GITHUB_PATH"
+      - name: Matched whole-firmware footprint matrix (build/ABI, not hardware runtime)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tests/channel-qualification/build.py firmware --platform mps2-an521-mock
+          cat target/channel-qualification/mps2-an521-mock/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: channel-qualification-firmware-${{ github.sha }}
+          path: |
+            target/channel-qualification/mps2-an521-mock/*.*
+            target/channel-qualification/mps2-an521-mock/c*/*.*
+            target/channel-qualification/mps2-an521-mock/c*/nuttx/nuttx
+            target/channel-qualification/mps2-an521-mock/c*/nuttx/nuttx.bin
+            target/channel-qualification/mps2-an521-mock/c*/nuttx/*.map
