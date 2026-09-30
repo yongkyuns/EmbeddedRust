@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   host:
-    if: (github.repository == 'yongkyuns/EmbeddedRust' || github.repository == 'yongkyuns/nxrs') && github.actor == 'yongkyuns'
-    runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
+    if: github.repository == 'yongkyuns/EmbeddedRust' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, EmbeddedRust, nuttx, isolated]
     timeout-minutes: 15
     steps:
       - name: Verify isolated runner
@@ -64,8 +64,8 @@ jobs:
             target/**/cc-command.txt
   arm:
     needs: host
-    if: (github.repository == 'yongkyuns/EmbeddedRust' || github.repository == 'yongkyuns/nxrs') && github.actor == 'yongkyuns'
-    runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
+    if: github.repository == 'yongkyuns/EmbeddedRust' && github.actor == 'yongkyuns'
+    runs-on: [self-hosted, Linux, X64, EmbeddedRust, nuttx, isolated]
     timeout-minutes: 55
     steps:
       - name: Verify isolated runner
