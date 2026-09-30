@@ -37,12 +37,9 @@ fn main() {
             panic!("unsupported benchmark target: {target}");
         }
         // The normal std build has resolved Kconfig but has not built C yet.
-        let app_command =
-            env::var("NXRS_APP_COMMAND").unwrap_or_else(|_| "rt_bench".to_owned());
-        let app_priority =
-            env::var("NXRS_APP_PRIORITY").unwrap_or_else(|_| "100".to_owned());
-        let app_stack =
-            env::var("NXRS_APP_STACKSIZE").unwrap_or_else(|_| "65536".to_owned());
+        let app_command = env::var("NXRS_APP_COMMAND").unwrap_or_else(|_| "rt_bench".to_owned());
+        let app_priority = env::var("NXRS_APP_PRIORITY").unwrap_or_else(|_| "100".to_owned());
+        let app_stack = env::var("NXRS_APP_STACKSIZE").unwrap_or_else(|_| "65536".to_owned());
         checked(
             Command::new("make")
                 .arg("-C")
