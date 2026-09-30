@@ -228,3 +228,9 @@ force product policy to import concrete backend packages.
 
 The next architectural work is execution/readiness and cross-thread payload
 ownership, not another provider registry.
+
+## Related reference
+
+[OpenVela, POSIX, and nxrs: where portability actually lives](references/openvela-abstractions.md)
+compares device-class, OS, and capability boundaries with source-backed examples
+and D2 diagrams. It is non-normative and does not change the architecture above.
