@@ -184,6 +184,13 @@ name = "nxrs-service-event"
 version = "0.1.0"
 
 [[package]]
+name = "nxrs-rt-bench"
+version = "0.1.0"
+dependencies = [
+ "nxrs-service-event",
+]
+
+[[package]]
 name = "nxrs-services"
 version = "0.1.0"
 dependencies = [
