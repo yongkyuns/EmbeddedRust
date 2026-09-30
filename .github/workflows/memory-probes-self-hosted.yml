@@ -12,18 +12,29 @@ on:
       - 'Cargo.toml'
       - 'Cargo.lock'
       - '.github/workflows/memory-probes-self-hosted.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/std-demo/**'
+      - 'app/ao-stress/**'
+      - 'service/event/**'
+      - 'tests/allocation-probe/**'
+      - 'tests/host/test_memory_probes.py'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/memory-probes-self-hosted.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: memory-probes-${{ github.ref }}
+  group: memory-probes-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   memory:
-    if: github.repository == 'yongkyuns/nxrs' && github.actor == 'yongkyuns'
+    if: github.repository == 'yongkyuns/EmbeddedRust' && github.actor == 'yongkyuns'
     runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
     timeout-minutes: 15
     steps:
