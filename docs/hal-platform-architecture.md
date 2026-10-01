@@ -6,6 +6,13 @@
 
 Nxrs has no global HAL platform package or universal HAL object.
 
+For physical NuttX resources, each capability's dedicated Rust provider also
+owns device access. Qualified Rust `std` APIs are used directly for ordinary
+descriptor I/O; NuttX-specific device controls remain private implementation
+details with minimal target-ABI glue. There is no separate generic POSIX/device
+adapter layer. See
+[NuttX device access from Rust](nuttx-device-access.md).
+
 Each capability owns its public facade and its provider selection:
 
 ~~~text
@@ -214,7 +221,10 @@ The target invariant is:
 
 Platform differences may change device wiring, OS calls, resource limits,
 readiness implementation, physical timing, or configuration data. They must not
-force product policy to import concrete backend packages.
+force product policy to import concrete backend packages. On NuttX, raw device
+paths, descriptors, request numbers and native control structures remain inside
+the selected capability provider rather than leaking into portable app/service
+code.
 
 ## Current migration state
 

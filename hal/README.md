@@ -12,10 +12,19 @@ use standard-library file/socket operations beneath these device/data contracts.
 Mock providers are explicit test choices, not evidence of real web hardware/I/O.
 
 `common` contains only shared DeviceError values. `support/nuttx` contains the
-existing descriptor ownership and scalar error translation used by NuttX
-camera/storage compatibility providers. Neither imports camera, storage or
-network implementations. NuttX transport no longer uses that descriptor/FFI
-support; its production provider is ordinary `std::net`.
+existing descriptor ownership and scalar error translation used by older NuttX
+camera/storage compatibility providers. It is not a generic device/POSIX layer
+and must not grow into one. NuttX transport already demonstrates the preferred
+direction: its production provider uses ordinary `std::net` directly.
+
+For new physical NuttX providers, keep the implementation in the capability's
+Rust `hal/<capability>/nuttx` package. Use qualified `std::fs`, `std::io`
+and `std::net` operations directly where applicable. If the NuttX driver
+requires a device-specific control that `std` does not represent, keep only
+the minimal typed target-header/ABI helper private to that provider; do not
+expose raw `ioctl`, descriptors, request numbers or native structs to portable
+consumers. See
+[NuttX device access from Rust](../docs/nuttx-device-access.md).
 
 ## Composition and ordinary standard-library facilities
 

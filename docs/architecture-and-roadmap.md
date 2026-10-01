@@ -31,9 +31,18 @@ policy.
 NuttX supplies the RTOS; Rust `std` is allowed. Prefer the same ordinary threads
 and bounded channels on NuttX, native, and the selected pthread-enabled
 Emscripten browser profile. Keep actual platform I/O differences below the HAL
-boundary, not in a compulsory async service rewrite. Unselected implementations
-and their exclusive dependencies must not be built, linked, or initialized in
-that image. See [hal-platform-architecture.md](hal-platform-architecture.md).
+boundary, not in a compulsory async service rewrite.
+
+For physical NuttX resources, the dedicated Rust HAL provider should use
+qualified `std` file/I/O/socket APIs directly for ordinary operations. A
+device-specific NuttX control is translated behind a typed Rust method with only
+the minimum private target-header/ABI glue required. Do not add a generic POSIX
+adapter layer or duplicate protocol/device logic in C. See
+[NuttX device access from Rust](nuttx-device-access.md).
+
+Unselected implementations and their exclusive dependencies must not be built,
+linked, or initialized in that image. See
+[hal-platform-architecture.md](hal-platform-architecture.md).
 
 **Require behavior and enforceable boundaries, not a framework.** Cargo, NuttX's
 configuration/build tools, ordinary Rust types, and small existing scripts are
