@@ -19,6 +19,10 @@ members = [
     "hal/gnss",
     "hal/gnss/api",
     "hal/gnss/mock",
+    "hal/led",
+    "hal/led/api",
+    "hal/led/mock",
+    "hal/led/nuttx",
     "hal/transport",
     "hal/transport/api",
     "hal/transport/native",
@@ -42,6 +46,7 @@ members = [
     "tests/browser-threads",
     "tests/nuttx-std/resources",
     "tests/nuttx-std/udp",
+    "tests/nuttx-std/userled",
     "tests/rtos-bench/rust",
 ]
 default-members = [
@@ -58,6 +63,9 @@ default-members = [
     "hal/gnss",
     "hal/gnss/api",
     "hal/gnss/mock",
+    "hal/led",
+    "hal/led/api",
+    "hal/led/mock",
     "hal/common",
     "hal/transport",
     "hal/transport/api",

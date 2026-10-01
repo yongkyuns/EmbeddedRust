@@ -1,0 +1,7 @@
+[package]
+name = "nxrs-std-userled"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+nxrs-led = { path = "../../../hal/led", features = ["nuttx"] }

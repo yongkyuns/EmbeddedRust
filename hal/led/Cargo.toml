@@ -1,0 +1,18 @@
+[package]
+name = "nxrs-led"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+mock = ["dep:nxrs-led-mock"]
+nuttx = ["dep:nxrs-led-nuttx"]
+
+[dependencies]
+nxrs-led-api = { path = "api" }
+nxrs-led-mock = { path = "mock", optional = true }
+nxrs-led-nuttx = { path = "nuttx", optional = true }
+
+[package.metadata.nxrs]
+kind = "hal-capability"
+provider-features = ["mock", "nuttx"]

@@ -1,0 +1,81 @@
+name: USERLED ESP32-S3 QEMU
+on:
+  pull_request:
+    paths:
+      - 'hal/led/**'
+      - 'hal/common/**'
+      - 'tests/nuttx-std/**'
+      - 'tests/browser-threads/**'
+      - 'tools/install-qemu-tools.sh'
+      - 'tools/apply-nuttx-patches.py'
+      - 'platform/nuttx/patches/**'
+      - 'platform/nuttx-apps/patches/**'
+      - 'external/nuttx'
+      - 'external/nuttx-apps'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/userled-esp32s3.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: userled-esp32s3-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  target:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      NUTTX_STD_COMPAT_FIXES: '1'
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          submodules: true
+      - name: Install pinned host Cargo and dependencies
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          sudo apt-get update
+          sudo apt-get install -y bison flex gperf kconfig-frontends genromfs libncurses-dev zlib1g-dev libgcrypt20 libglib2.0-0 libpixman-1-0 libsdl2-2.0-0 libslirp0
+          python3 -m venv target/userled-venv
+          target/userled-venv/bin/pip install kconfiglib==14.1.0 esptool==4.8.1
+          echo "$GITHUB_WORKSPACE/target/userled-venv/bin" >> "$GITHUB_PATH"
+      - uses: actions/cache@v4
+        with:
+          path: target/qemu-tools/*.tar.xz
+          key: qemu-linux-x64-9.0.0-20240606-gcc14.2-20241119-rust1.90.0.0-v1
+      - name: Install hash-verified Xtensa tools
+        run: bash tools/install-qemu-tools.sh
+      - name: Check target oracle and architecture
+        run: |
+          python3 tests/nuttx-std/userled/run.py --self-test
+          python3 tools/check-architecture.py
+          bash -n tests/nuttx-std/userled/build.sh
+      - name: Build real Rust provider, C helpers and NuttX USERLED
+        run: |
+          set -o pipefail
+          mkdir -p target/nuttx-esp32s3-std
+          bash tests/nuttx-std/userled/build.sh 2>&1 | tee target/nuttx-esp32s3-std/build.log
+      - name: Execute three fresh kernels and deliberate failure
+        run: |
+          source target/qemu-tools/environment.sh
+          python3 tests/nuttx-std/userled/run.py
+      - name: Retain final image and target evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: userled-esp32s3-qemu
+          path: |
+            target/nuttx-esp32s3-std/*.json
+            target/nuttx-esp32s3-std/*.jsonl
+            target/nuttx-esp32s3-std/*.txt
+            target/nuttx-esp32s3-std/*.log
+            target/nuttx-esp32s3-std/*.sha256
+            target/nuttx-esp32s3-std/*.config
+            target/nuttx-esp32s3-std/*.patch
+            target/nuttx-esp32s3-std/abi-*
+            target/nuttx-esp32s3-std/nuttx/nuttx
+            target/nuttx-esp32s3-std/nuttx/nuttx.map
+            target/nuttx-esp32s3-std/nuttx/nuttx.merged.bin
+          if-no-files-found: warn
