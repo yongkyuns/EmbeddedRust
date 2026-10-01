@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   qualify:
-    if: github.repository == 'yongkyuns/EmbeddedRust' && github.actor == 'yongkyuns'
+    if: github.repository == 'yongkyuns/nxrs' && github.actor == 'yongkyuns'
     runs-on: [self-hosted, Linux, X64, nxrs, nuttx, isolated]
     timeout-minutes: 20
     steps:
