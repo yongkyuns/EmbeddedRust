@@ -1,16 +1,15 @@
 name: Mac runner smoke test
 
 on:
-  push:
-    branches:
-      - main
-      - 'ykshin/**'
+  # The optional macOS runner is not part of the dedicated Linux CI pool.
+  # Keep this diagnostic opt-in so normal pushes cannot queue indefinitely.
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: embeddedrust-mac-runner
+  group: nxrs-mac-runner
   cancel-in-progress: false
 
 jobs:
