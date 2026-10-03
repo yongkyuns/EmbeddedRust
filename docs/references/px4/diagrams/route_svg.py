@@ -47,7 +47,7 @@ def rounded_path(points,radius=6):
 
 def raw_path_endpoints(path):
     """Return the rendered connection endpoints from the original D2 path."""
-    nums=[float(x) for x in re.findall(r'-?\\d+(?:\\.\\d+)?',path.get('d',''))]
+    nums=[float(x) for x in re.findall(r'-?\d+(?:\.\d+)?',path.get('d',''))]
     if len(nums)<4: raise ValueError('Connection path has no usable endpoints')
     return (nums[0],nums[1]),(nums[-2],nums[-1])
 
