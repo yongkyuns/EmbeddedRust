@@ -1,26 +1,85 @@
-name: PX4 layout v3 tooling (temporary)
+name: PX4 layout v3 qualification (temporary)
 on:
   push:
     branches: [docs/px4-layout-v3-render]
-    paths: ['.github/workflows/px4-layout-v3-render.yml']
+    paths: ['.github/workflows/px4-layout-v3-render.yml', '.github/px4-layout-v3/**']
 permissions:
   contents: read
 jobs:
-  tools:
+  render:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Prepare pinned renderer and source snapshot
+      - name: Apply checksum-verified documentation sources
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p bundle/tools
-          curl --fail --location --retry 2 https://github.com/d2lang/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz -o bundle/tools/d2.tar.gz
-          echo '5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9  bundle/tools/d2.tar.gz' | sha256sum --check
-          git archive HEAD | gzip > bundle/source.tar.gz
+          python3 - <<'PY'
+          import base64, hashlib, json, zlib
+          from pathlib import Path
+          encoded = ''.join(Path('.github/px4-layout-v3/'+name).read_text() for name in ['part1','part2'])
+          raw = zlib.decompress(base64.b64decode(encoded, validate=True))
+          assert hashlib.sha256(raw).hexdigest() == '9ea1c2ae53a112650aba370e21328cbf2667b532d2b3ee8713a2e2f659fa6da6'
+          changes = json.loads(raw)
+          assert len(changes) == 10
+          root = Path('docs/references/px4').resolve()
+          for name, content in changes.items():
+              path = (root/name).resolve()
+              assert path.is_relative_to(root/'diagrams')
+              if name.endswith('route_svg.py'):
+                  content = '\n'.join(line.rstrip() for line in content.splitlines())+'\n'
+              path.write_text(content)
+              print(name)
+          PY
+      - name: Install checksum-verified D2 v0.9.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/d2"
+          curl --fail --location --retry 2 https://github.com/d2lang/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz -o "$RUNNER_TEMP/d2.tar.gz"
+          echo "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9  $RUNNER_TEMP/d2.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/d2.tar.gz" -C "$RUNNER_TEMP/d2"
+          echo "D2=$(find "$RUNNER_TEMP/d2" -type f -name d2 -print -quit)" >> "$GITHUB_ENV"
+      - name: Render all fourteen diagrams and run routing tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n docs/references/px4/diagrams/render.sh
+          bash docs/references/px4/diagrams/render.sh
+          sha256sum docs/references/px4/diagrams/*.svg > "$RUNNER_TEMP/svg-hashes"
+          bash docs/references/px4/diagrams/render.sh
+          sha256sum --check "$RUNNER_TEMP/svg-hashes"
+          git diff --check
+          python3 - <<'PY'
+          import subprocess
+          changed = subprocess.check_output(['git','diff','--name-only','--','*.svg'], text=True).splitlines()
+          expected = {'docs/references/px4/diagrams/'+name+'.svg' for name in ['sensor-to-ekf-execution-map','execution-loops-data-flow','execution-map']}
+          assert set(changed) == expected, changed
+          PY
+      - name: Qualify actual text bounds and capture browser previews
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install playwright==1.57.0
+          python3 -m playwright install --with-deps chromium
+          python3 docs/references/px4/diagrams/check_browser.py --screenshots-dir "$RUNNER_TEMP/px4-previews"
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: px4-layout-v3-tools
-          path: bundle/
-          retention-days: 3
+          name: px4-layout-v3-qualified
+          path: |
+            docs/references/px4/diagrams/
+            ${{ runner.temp }}/px4-previews/
+          retention-days: 7
+      - name: Commit qualified documentation on temporary branch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -f -- docs/references/px4/diagrams/*.d2 docs/references/px4/diagrams/*.svg docs/references/px4/diagrams/*.py docs/references/px4/diagrams/*.sh docs/references/px4/diagrams/*.json docs/references/px4/diagrams/README.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: qualify all three PX4 diagram layouts and routing'
+          git push origin HEAD:refs/heads/docs/px4-layout-v3-render
