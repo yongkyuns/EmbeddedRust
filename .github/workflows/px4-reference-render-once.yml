@@ -12,24 +12,25 @@ jobs:
     if: github.repository == 'yongkyuns/nxrs' && github.ref == 'refs/heads/docs/px4-reference-render-20261002'
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: docs/px4-reference-render-20261002
       - name: Install checksum-verified D2 v0.9.0
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/px4-d2"
-          curl --fail --location --retry 2 https://github.com/d2lang/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz -o "$RUNNER_TEMP/px4-d2.tar.gz"
-          echo "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9  $RUNNER_TEMP/px4-d2.tar.gz" | sha256sum --check
-          tar -xzf "$RUNNER_TEMP/px4-d2.tar.gz" -C "$RUNNER_TEMP/px4-d2"
+          curl --fail --location --retry 2 https://github.com/d2lang/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz -o "$RUNNER_TEMP/d2-v0.9.0-linux-amd64.tar.gz"
+          echo "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9  $RUNNER_TEMP/d2-v0.9.0-linux-amd64.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/d2-v0.9.0-linux-amd64.tar.gz" -C "$RUNNER_TEMP/px4-d2"
           binary="$(find "$RUNNER_TEMP/px4-d2" -type f -name d2 -print -quit)"
           test -n "$binary"
           echo "$(dirname "$binary")" >> "$GITHUB_PATH"
           "$binary" --version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: px4-d2-toolchain
+          path: ${{ runner.temp }}/d2-v0.9.0-linux-amd64.tar.gz
+          retention-days: 1
       - name: Render and validate diagrams
         shell: bash
         run: |
@@ -41,14 +42,3 @@ jobs:
         with:
           name: px4-reference-diagrams
           path: docs/references/px4/diagrams/
-      - name: Commit only generated assets to temporary branch
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$GITHUB_REF" = refs/heads/docs/px4-reference-render-20261002
-          git add -- docs/references/px4/diagrams/*.svg docs/references/px4/diagrams/layout-metrics.json
-          if git diff --cached --quiet; then exit 0; fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'docs: render and validate PX4 landscape diagrams'
-          git push origin HEAD:refs/heads/docs/px4-reference-render-20261002
