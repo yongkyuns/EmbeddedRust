@@ -2,11 +2,21 @@
 
 **Research reference · 2026-10-02 · non-normative.** This note follows PX4 source at `b798249a61af32c355d95decd2805a6ab4e9d9f1`, using the multicopter path as a concrete example. It is not a proposal to import PX4 into nxrs. Configuration, aircraft type, sensor selection and target can change the paths shown. [Exact snapshots and evidence](sources.md) · [nxrs design implications](nxrs-design-notes.md) · [Diagram reproduction](diagrams/README.md).
 
+## Start here: one execution map
+
+![Four PX4 processing loops with separate data and wakeup paths](diagrams/execution-map.svg)
+
+[Editable D2](diagrams/execution-map.d2) · [Full-size SVG](diagrams/execution-map.svg)
+
+This single-estimator, NuttX **flat-build** map shows four processing contexts, not the total firmware thread count. A-C run `WorkQueue::Run()`; D owns `GPS::run()`. Grey OS/IRQ services are not a fifth worker. Teal arrows represent retained uORB data and orange dashed arrows scheduling; the gyro report wakes VehicleIMU. GNSS arrivals are independent and do not add a GNSS-triggered EKF wake in this path. No NuttX HPWORK/LPWORK relay or protected kernel/userspace crossing is implied. [Worker][worker] · [Driver][icm] · [EKF2][ekf] · [Notification][callback]
+
+Open the full-size SVG for reading: 24 px source labels become about 14.5 px at 1000 px width, but only 11.6 px at 800 px. The nine compact detail panels below retain their original 800 px checks.
+
 ## The essential distinction
 
 **PX4 has neither one central event-processing loop nor one thread per module.** Topic storage, notification, runnable work and algorithm execution are separate mechanisms. A publication can make a consumer runnable without executing its algorithm, and multiple modules can run sequentially on one worker thread. This distinction is visible in the [publication path][node], [subscription callback][callback] and [worker loop][worker].
 
-The nine diagrams separate dependency, scheduling and data-flow views. Dashed arrows denote scheduling/notification where indicated; solid arrows are data flow or dependency as stated in each caption. They are not a timing trace or a promise of one context switch per arrow.
+The overview combines execution ownership and data flow; the nine detail diagrams below separate dependency, scheduling and data-flow views. Dashed arrows denote scheduling/notification where indicated; solid arrows are data flow or dependency as stated in each caption. They are not a timing trace or a promise of one context switch per arrow.
 
 ## 1. What is above NuttX?
 

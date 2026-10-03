@@ -2,6 +2,12 @@
 
 These are actual D2 sources with checked-in SVG output. They use a local **Material-style palette**, adapted from the Zephyr reference, not a named built-in D2 theme. There are no imports from other reference directories.
 
+## Unified execution map
+
+[execution-map.d2](execution-map.d2) is the self-contained D2 conversion of the corrected four-loop illustration; [execution-map.svg](execution-map.svg) is its generated output. It contains no image imports. Named grid anchors maintain aligned columns and keep data arrows separate from dashed wake notifications. This is a compact grid-based execution map, not a globally ordered sequence trace.
+
+The full-page map is 1654 x 1186. Its actual 24 px labels scale to **14.5 px at 1000 px width**, with 717 px height. At 800 px, labels are **11.6 px** and height is 573.6 px: open the standalone SVG, rather than treating the inline thumbnail as the reading view. `check.py` explicitly uses a separate 1000 px gate (minimum 14 px text, maximum 760 px height, landscape aspect at least 1.35) for this map. The original nine panels retain their 800 px, minimum-14-px, maximum-440-px gates unchanged. `layout-metrics.json` records both widths for the new map.
+
 ## Layout contract
 
 Use left-to-right landscape panels with 20 px source labels and explicit, compact node sizes. Split the outer and inner control paths instead of stretching one unreadable mega-diagram. Put implementation qualifications in the surrounding prose rather than tiny arrow labels. Colors distinguish application, contract, implementation, adaptation and hardware roles; captions identify whether each panel represents data, scheduling or dependencies.
@@ -34,7 +40,7 @@ Requirements: **D2 v0.9.0** and Python 3.9 or newer. From the repository root:
 bash docs/references/px4/diagrams/render.sh
 ```
 
-Or set `D2=/absolute/path/to/d2`. The script checks the renderer version, uses ELK, theme 0 and 16 px padding, then validates XML, landscape aspect, height at reading width (at most 440 px) and minimum actual label size (at least 14 px). It regenerates `layout-metrics.json` as well as the SVGs. Do not hand-edit SVGs or claim the size checks replace visual inspection.
+Or set `D2=/absolute/path/to/d2`. The script checks the renderer version, uses ELK, theme 0 and 16 px padding, then validates XML, landscape aspect and actual label sizes using the two documented reading-width gates above. It regenerates `layout-metrics.json` as well as the SVGs. Do not hand-edit SVGs or claim the size checks replace visual inspection.
 
 The verified Linux-amd64 D2 v0.9.0 archive used by the [successful rendering run](https://github.com/yongkyuns/nxrs/actions/runs/37014223427) had SHA-256 `5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9`. Other platforms need their own official binary/checksum, not this Linux checksum.
 
