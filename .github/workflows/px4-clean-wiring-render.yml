@@ -1,0 +1,54 @@
+name: PX4 clean wiring validation (temporary)
+on:
+  push:
+    branches: [docs/px4-clean-wiring-render]
+permissions:
+  contents: read
+jobs:
+  render:
+    if: github.repository == 'yongkyuns/nxrs' && github.ref == 'refs/heads/docs/px4-clean-wiring-render'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install checksum-verified D2 v0.9.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 2 https://github.com/d2lang/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz -o "$RUNNER_TEMP/d2.tar.gz"
+          echo "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9  $RUNNER_TEMP/d2.tar.gz" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/d2"
+          tar -xzf "$RUNNER_TEMP/d2.tar.gz" -C "$RUNNER_TEMP/d2"
+          binary="$(find "$RUNNER_TEMP/d2" -type f -name d2 -print -quit)"
+          test -n "$binary"
+          echo "$(dirname "$binary")" >> "$GITHUB_PATH"
+          "$binary" --version
+      - name: Update overview and rendering instructions
+        run: python3 .px4-wiring-update-docs.py
+      - name: Render all diagrams and check layout and wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n docs/references/px4/diagrams/render.sh
+          bash docs/references/px4/diagrams/render.sh
+          test "$(git hash-object docs/references/px4/diagrams/sensor-to-ekf-execution-map.svg)" = 08750c98436b20ad715de6d5b892824ca07510e0
+          test "$(git hash-object docs/references/px4/diagrams/execution-loops-data-flow.svg)" = 528f5a36a5e5e158cbef8416675961a16a86ad9b
+          test "$(git hash-object docs/references/px4/diagrams/execution-map.svg)" = a62f764ca88e81bbde65a59b5cd840d102fc7c0f
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: px4-clean-wiring-reference
+          path: docs/references/px4/
+      - name: Publish verified documentation on temporary branch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/docs/px4-clean-wiring-render
+          git add -f -- docs/references/px4
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: render verified non-crossing PX4 wiring'
+          git push origin HEAD:refs/heads/docs/px4-clean-wiring-render
