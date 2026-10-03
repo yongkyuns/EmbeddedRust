@@ -18,7 +18,7 @@ jobs:
           mkdir -p bundle/tools
           curl --fail --location --retry 2 https://github.com/d2lang/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz -o bundle/tools/d2.tar.gz
           echo '5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9  bundle/tools/d2.tar.gz' | sha256sum --check
-          git archive 4a61eb13a8a20dc83dfd6ee013ad2e723a5cfe40 | gzip > bundle/source.tar.gz
+          git archive HEAD | gzip > bundle/source.tar.gz
       - uses: actions/upload-artifact@v4
         with:
           name: px4-layout-v3-tools
