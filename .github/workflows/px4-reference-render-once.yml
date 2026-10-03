@@ -88,7 +88,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = refs/heads/docs/px4-reference-render-20261002
-          git add -f -- docs/references/px4/README.md docs/references/px4/diagrams/README.md docs/references/px4/diagrams/execution-map.svg docs/references/px4/diagrams/imu-to-ekf.svg docs/references/px4/diagrams/gnss-to-ekf.svg docs/references/px4/diagrams/layout-metrics.json
+          git add -f -- docs/references/px4/README.md docs/references/px4/diagrams/README.md docs/references/px4/diagrams/execution-map.svg docs/references/px4/diagrams/imu-to-ekf.svg docs/references/px4/diagrams/gnss-to-ekf.svg docs/references/px4/diagrams/sensor-to-ekf-execution-map.svg docs/references/px4/diagrams/execution-loops-data-flow.svg docs/references/px4/diagrams/layout-metrics.json
           if git diff --cached --quiet; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
