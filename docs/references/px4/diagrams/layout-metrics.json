@@ -64,13 +64,13 @@
   },
   {
     "name": "execution-map",
-    "width": 1654.0,
-    "height": 1186.0,
-    "height_at_800": 573.6,
-    "min_font_at_800": 11.6,
-    "reading_width": 1000,
-    "height_at_reading_width": 717.0,
-    "min_font_at_reading_width": 14.5
+    "width": 2094.0,
+    "height": 1391.0,
+    "height_at_800": 531.4,
+    "min_font_at_800": 9.2,
+    "reading_width": 1500,
+    "height_at_reading_width": 996.4,
+    "min_font_at_reading_width": 17.2
   },
   {
     "name": "imu-to-ekf",
@@ -90,6 +90,26 @@
     "min_font_at_800": 9.7,
     "reading_width": 1200,
     "height_at_reading_width": 714.0,
+    "min_font_at_reading_width": 14.6
+  },
+  {
+    "name": "sensor-to-ekf-execution-map",
+    "width": 2388.0,
+    "height": 1274.0,
+    "height_at_800": 426.8,
+    "min_font_at_800": 8.0,
+    "reading_width": 1500,
+    "height_at_reading_width": 800.3,
+    "min_font_at_reading_width": 15.1
+  },
+  {
+    "name": "execution-loops-data-flow",
+    "width": 2468.0,
+    "height": 1322.0,
+    "height_at_800": 428.5,
+    "min_font_at_800": 7.8,
+    "reading_width": 1500,
+    "height_at_reading_width": 803.5,
     "min_font_at_reading_width": 14.6
   }
 ]

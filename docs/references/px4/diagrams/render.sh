@@ -10,3 +10,4 @@ for name in architecture execution-contexts uorb-delivery topic-retention imu-ac
   "$D2" --layout=elk --theme=0 --pad=16 "$name.d2" "$name.svg"
 done
 python3 check.py
+python3 check-wiring.py

@@ -1,53 +1,47 @@
 # Diagram layout and reproduction
 
-These are actual D2 sources with checked-in SVG output. They use a local **Material-style palette**, adapted from the Zephyr reference, not a named built-in D2 theme. There are no imports from other reference directories.
+## Three primary views: full wiring relayout
 
-## Three faithful execution/data-flow recreations
+The files retain their names but prioritize legibility over reproducing the earlier raster geometry. All are editable, self-contained D2 with generated SVG output.
 
-The overview now contains three self-contained D2 recreations of the three execution/data-flow infographics discussed during review:
+| View | Source / SVG | Native size | Height at 1500 px | Minimum text at 1500 px |
+| --- | --- | --- | --- | --- |
+| Sensor-to-EKF overview | [D2](sensor-to-ekf-execution-map.d2) / [SVG](sensor-to-ekf-execution-map.svg) | 2388 × 1274 | 800.3 px | 15.1 px |
+| Execution ownership + control | [D2](execution-loops-data-flow.d2) / [SVG](execution-loops-data-flow.svg) | 2468 × 1322 | 803.5 px | 14.6 px |
+| Four-loop sequence | [D2](execution-map.d2) / [SVG](execution-map.svg) | 2094 × 1391 | 996.4 px | 17.2 px |
 
-- [sensor-to-ekf-execution-map.d2](sensor-to-ekf-execution-map.d2) / [SVG](sensor-to-ekf-execution-map.svg): banded hardware/NuttX, PX4 worker, uORB and legend view.
-- [execution-loops-data-flow.d2](execution-loops-data-flow.d2) / [SVG](execution-loops-data-flow.svg): horizontal hardware, scheduling/execution, module and uORB layers, including the control-side context.
-- [execution-map.d2](execution-map.d2) / [SVG](execution-map.svg): A-D execution-column/lifeline view of the IMU and GNSS propagation paths.
+These are full-page diagrams. At 800 px the minimum labels are only about 7.8–9.2 px; open the standalone SVG rather than treating an inline preview as the reading view. `layout-metrics.json` records both the 800 px measurements and each figure's actual reading-width gate.
 
-None embeds a raster image. They intentionally preserve the visual grouping and arrow roles of the corresponding raster diagrams while correcting two potentially misleading implications: PX4 `wq:*` workers are not NuttX HPWORK/LPWORK, and the NuttX flat-build diagram boundary is a responsibility boundary rather than a protected user/kernel address-space split.
+## Wiring rules
 
-These are full-page reference diagrams; open the standalone SVG when reading dense labels. The original compact panels below retain their separate 800 px readability checks.
+Use regular left-to-right ELK graphs **inside** the overview's independent hardware, IMU and GNSS rows. There are no cross-grid edges. Adjacent-stage payload and scheduling links use parallel, non-overlapping paths. Repeated B/C labels refer to the same worker contexts; they do not add threads or queues. Do not connect distinct topics into a fictitious shared bus merely to tidy the drawing.
 
-## Layout contract
+Use containment for execution ownership: one card per OS context, nested module boxes, and no scheduler-to-every-module wires. Keep the control data path in a separate row. Use D2's native `sequence_diagram` for the four-loop view: horizontal messages and distinct IMU/GNSS groups below the actor headers. Sequence lifeline/message intersections are intentional; they are not intersecting signal wires.
 
-Use left-to-right landscape panels with 20 px source labels and explicit, compact node sizes. Split the outer and inner control paths instead of stretching one unreadable mega-diagram. Put implementation qualifications in the surrounding prose rather than tiny arrow labels. Colors distinguish application, contract, implementation, adaptation and hardware roles; captions identify whether each panel represents data, scheduling or dependencies.
+Teal means a uORB data handoff, orange dashed means scheduling, and grey means OS/device I/O. In the sequence view the teal message labels also state when a callback schedules the consumer. An arrow never guarantees one raw sample, context switch, or filter update. GNSS's final link does not wake EKF2 in the shown configuration. The source snapshot and semantic qualifications remain in the main analysis.
 
-Dashed edges mean scheduling/notification in the applicable figures. Solid edges mean data or dependency as the caption specifies. No diagram claims one context switch, one sample or one handler per arrow. The estimator panel's fusion/prediction boxes are conceptual phases, not separate tasks. The nxrs panel is proposed nxrs behavior, not PX4.
+D2's documented grid behavior explains the previous crossings: with ELK/Dagre, edges between grid cells are straight segments without path-finding. [Grid connections](https://d2lang.com/tour/grid-diagrams/#connections-between-grid-cells) · [Sequence diagrams](https://d2lang.com/tour/sequence-diagrams/)
 
-## Measured presentation
+## Checks and limitations
 
-The checker uses actual SVG text sizes and `viewBox`, scaling down to an 800 px reading width without assuming enlargement. These are layout measurements, not system performance measurements.
+`render.sh` compiles all **14** D2 sources with D2 v0.9.0, ELK, theme 0 and 16 px padding. `check.py` checks XML, landscape and actual text sizes. The original nine compact panels retain their 800 px / minimum-14-px / maximum-440-px gates. The two supplemental IMU/GNSS traces retain their 1200 px gates. The three primary maps use 1500 px / minimum-14-px / maximum-1100-px gates and aspect ratio at least 1.45. No existing compact-panel gate is weakened.
 
-| Figure | Native SVG dimensions | Height at 800 px | Minimum label size at 800 px |
-| --- | --- | --- | --- |
-| Architecture | 1036 × 226 | 174.5 px | 15.4 px |
-| Execution contexts | 812 × 410 | 403.9 px | 19.7 px |
-| uORB delivery | 1020 × 226 | 177.3 px | 15.7 px |
-| Topic retention | 818 × 238 | 232.8 px | 19.6 px |
-| IMU acquisition | 1046 × 238 | 182.0 px | 15.3 px |
-| Estimator inputs | 1062 × 238 | 179.3 px | 15.1 px |
-| Outer control | 1058 × 126 | 95.3 px | 15.1 px |
-| Fast control | 1088 × 238 | 175.0 px | 14.7 px |
-| Proposed nxrs direction | 1122 × 338 | 241.0 px | 14.3 px |
+`check-wiring.py` checks all **23 signal wires** in the three primary maps: 12 in the overview, 4 in the control row and 7 in the sequence view. It rejects non-horizontal signal routes, stroke-centerline intersections with opaque rectangular block interiors (4 px inset), and overlapping signal wires. It excludes the sequence lifelines and sequence-group backgrounds. Counts are explicit so deleting wires does not make the test pass. Positive/negative synthetic checks exercise the collision predicates. Results are written to `wiring-metrics.json`.
 
-The execution-context panel is intentionally taller to distinguish three OS contexts; the other panels occupy roughly 95–241 px at reading width. All nine were visually inspected in Chromium at 800 px. Narrow mobile layouts may need opening/zooming the SVG; the 800 px checks do not establish readability at every viewport.
+The geometry checker is deliberately narrow: it does not prove semantic correctness or replace browser inspection of typography, masks, arrowheads and labels. The three primary SVGs were also rendered and visually inspected in Chromium; browser geometry checks found no text extending outside its own box and no signal wire crossing another label. A wire masked behind its own label is intentional.
 
 ## Reproduce
 
-Requirements: **D2 v0.9.0** and Python 3.9 or newer. From the repository root:
+Requirements: D2 v0.9.0 and Python 3.9+.
 
 ```sh
 bash docs/references/px4/diagrams/render.sh
+# Or just one figure:
+d2 --layout=elk --theme=0 --pad=16 \
+  docs/references/px4/diagrams/sensor-to-ekf-execution-map.d2 \
+  docs/references/px4/diagrams/sensor-to-ekf-execution-map.svg
 ```
 
-Or set `D2=/absolute/path/to/d2`. The script checks the renderer version, uses ELK, theme 0 and 16 px padding, then validates XML, landscape aspect and actual label sizes using the three documented reading-width gates above: 800 px for compact panels, 1000 px for the unified map and 1200 px for the focused IMU/GNSS traces. It regenerates `layout-metrics.json` as well as the SVGs. Do not hand-edit SVGs or claim the size checks replace visual inspection.
+Set `D2=/absolute/path/to/d2` when needed. Do not hand-edit generated SVGs. The verified Linux-amd64 D2 v0.9.0 archive SHA-256 is `5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9`; other platforms require their own official checksum.
 
-The verified Linux-amd64 D2 v0.9.0 archive used by the [successful rendering run](https://github.com/yongkyuns/nxrs/actions/runs/37014223427) had SHA-256 `5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9`. Other platforms need their own official binary/checksum, not this Linux checksum.
-
-[Return to the analysis](../README.md) · [nxrs implications](../nxrs-design-notes.md) · [Source evidence](../sources.md)
+[Analysis](../README.md) · [Source evidence](../sources.md) · [nxrs implications](../nxrs-design-notes.md)
