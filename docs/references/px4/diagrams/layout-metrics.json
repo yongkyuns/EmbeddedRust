@@ -31,22 +31,22 @@
   },
   {
     "name": "execution-loops-data-flow",
-    "width": 3234.0,
-    "height": 1627.0,
-    "height_at_800": 402.5,
-    "min_font_at_800": 3.5,
-    "reading_width": 3300,
-    "height_at_reading_width": 1627.0,
-    "min_font_at_reading_width": 14.0
+    "width": 2200.0,
+    "height": 1695.0,
+    "height_at_800": 616.4,
+    "min_font_at_800": 6.5,
+    "reading_width": 1800,
+    "height_at_reading_width": 1386.8,
+    "min_font_at_reading_width": 14.7
   },
   {
     "name": "execution-map",
     "width": 1654.0,
-    "height": 1186.0,
-    "height_at_800": 573.6,
+    "height": 1331.0,
+    "height_at_800": 643.8,
     "min_font_at_800": 11.6,
     "reading_width": 1000,
-    "height_at_reading_width": 717.0,
+    "height_at_reading_width": 804.7,
     "min_font_at_reading_width": 14.5
   },
   {
@@ -111,13 +111,13 @@
   },
   {
     "name": "sensor-to-ekf-execution-map",
-    "width": 2089.0,
-    "height": 1626.0,
-    "height_at_800": 622.7,
-    "min_font_at_800": 6.1,
-    "reading_width": 2100,
-    "height_at_reading_width": 1626.0,
-    "min_font_at_reading_width": 16.0
+    "width": 1854.0,
+    "height": 1573.0,
+    "height_at_800": 678.7,
+    "min_font_at_800": 7.3,
+    "reading_width": 1600,
+    "height_at_reading_width": 1357.5,
+    "min_font_at_reading_width": 14.7
   },
   {
     "name": "topic-retention",

@@ -16,3 +16,4 @@ for name in architecture execution-contexts uorb-delivery topic-retention imu-ac
 done
 python3 route_svg.py --input-dir "$raw" --output-dir .
 python3 check.py
+python3 -m unittest -v test_route_svg.py
