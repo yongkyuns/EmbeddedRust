@@ -61,5 +61,15 @@
     "height": 338.0,
     "height_at_800": 241.0,
     "min_font_at_800": 14.3
+  },
+  {
+    "name": "execution-map",
+    "width": 1654.0,
+    "height": 1186.0,
+    "height_at_800": 573.6,
+    "min_font_at_800": 11.6,
+    "reading_width": 1000,
+    "height_at_reading_width": 717.0,
+    "min_font_at_reading_width": 14.5
   }
 ]
