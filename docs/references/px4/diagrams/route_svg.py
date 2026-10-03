@@ -44,6 +44,30 @@ def rounded_path(points,radius=6):
         d+=' L '+fmt(before)+' Q '+fmt(b)+' '+fmt(after)
     return d+' L '+fmt(pts[-1])
 
+
+def raw_path_endpoints(path):
+    """Return the rendered connection endpoints from the original D2 path."""
+    nums=[float(x) for x in re.findall(r'-?\d+(?:\.\d+)?',path.get('d',''))]
+    if len(nums)<4: raise ValueError('Connection path has no usable endpoints')
+    return (nums[0],nums[1]),(nums[-2],nums[-1])
+
+def snap_route_endpoints(points,start,end):
+    """Attach configured waypoints to D2's exact rendered source/target boundary."""
+    pts=[[float(x),float(y)] for x,y in points]
+    if len(pts)<2:return pts
+    first_vertical=abs(pts[0][0]-pts[1][0])<1e-6
+    last_vertical=abs(pts[-2][0]-pts[-1][0])<1e-6
+    pts[0]=[start[0],start[1]]
+    if first_vertical: pts[1][0]=start[0]
+    else: pts[1][1]=start[1]
+    pts[-1]=[end[0],end[1]]
+    if last_vertical: pts[-2][0]=end[0]
+    else: pts[-2][1]=end[1]
+    clean=[]
+    for pt in pts:
+        if not clean or pt!=clean[-1]:clean.append(pt)
+    return clean
+
 def leaf_boxes(root):
     shapes=[]
     for g in root.iter(f'{{{SVG}}}g'):
@@ -71,7 +95,7 @@ def route_file(source:Path,target:Path,configs:list[dict]):
     collisions=[];boxes=list(leaf_boxes(root))
     for c in configs:
         g=index[c['edge']];p=g.find('./s:path[@class="connection"]',N)
-        pts=c['points'];p.set('d',rounded_path(pts));p.attrib.pop('mask',None)
+        start,end=raw_path_endpoints(p);pts=snap_route_endpoints(c['points'],start,end);p.set('d',rounded_path(pts));p.attrib.pop('mask',None)
         p.set('stroke-linejoin','round');p.set('stroke-linecap','round')
         for a,b in zip(pts,pts[1:]):
             for key,box in boxes:

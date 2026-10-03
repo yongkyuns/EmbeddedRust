@@ -1,33 +1,51 @@
-# Original design, connector-only routing
+# PX4 execution diagrams: spacing-balanced layout
 
-The three main D2 sources are restored byte-for-byte from **3079e378**, before the rejected full relayout. The worker boxes, bands, nested groups, node text, colors, sizes and positions are not redesigned.
+This revision keeps **0794f41d** as the rollback point and changes only the first two primary diagrams. The third four-loop map is unchanged.
+
+The architecture and visual language are preserved: the same Hardware/NuttX band, A/B/C/D execution-context grouping, uORB strip, colors, module names and data/wakeup distinction remain. This pass improves **box sizing, position, gutters, vertical spacing, and connector routing together** instead of routing lines around a cramped layout.
 
 - [Sensor-to-EKF execution map](sensor-to-ekf-execution-map.svg) · [D2](sensor-to-ekf-execution-map.d2)
 - [Execution loops and data flow](execution-loops-data-flow.svg) · [D2](execution-loops-data-flow.d2)
-- [Four-loop map](execution-map.svg) · [D2](execution-map.d2)
+- [Four-loop map — unchanged](execution-map.svg) · [D2](execution-map.d2)
 
-The first two maps have 19 and 28 connectors respectively rerouted through existing margins and gutters. Connection text is repositioned/reflowed without changing its wording. Their 38 and 36 node groups remain identical to D2's original render. The third map is restored unchanged: its original horizontal wiring did not need another redesign.
+## What changed from 0794f41d
+
+### Sensor-to-EKF map
+
+- worker cards are about 8% wider; inner boxes gain similar width/height
+- worker-to-worker gutter increases from 24 to 34 px
+- worker/uORB vertical separation increases from 16 to 34 px
+- uORB topic spacing increases from 16 to 22 px
+- hardware spacing and bottom legend spacing are slightly increased
+- all 19 connectors are re-routed orthogonally through the enlarged gaps
+
+The rendered canvas moves from 1939 × 1527 to about **2089 × 1626**: a modest increase that materially reduces congestion.
+
+### Execution loops and data flow
+
+- execution-context gutters increase from 14 to 28 px
+- module gutters increase from 10 to 18 px
+- topic gutters increase from 10 to 18 px
+- layer spacing increases from 10 to 18 px
+- execution/module/topic cards are widened and slightly taller
+- all 28 connectors are re-routed through the larger inter-layer corridors
+
+The canvas moves from 2784 × 1544 to about **3234 × 1627**. The extra width is intentional: this is a dense full-page ownership/data-flow reference and benefits more from readable columns than from compactness.
+
+## Routing model
+
+D2 remains the source of graph topology, block geometry and styling. `routes.json` specifies orthogonal connector waypoints and label placement for the first two diagrams; `route_svg.py` snaps those lanes to D2's rendered source/target boundaries and applies them after the D2 render.
+
+The routing pass verifies that every configured signal edge exists, its label text is unchanged, and no routed connector centerline crosses a visible leaf-box interior.
 
 ## Reproduce
 
-Requires D2 **v0.9.0**, Bash and Python **3.9+** (standard library only):
+Requires D2 **v0.9.0**, Bash and Python 3.9+:
 
 ```sh
 bash docs/references/px4/diagrams/render.sh
 ```
 
-**Important: the final first-two SVGs use a post-render routing pass.** Running `d2 file.d2 file.svg` alone reproduces the old straight grid connectors, not the revised wiring. D2 controls the graph, blocks and styling; `routes.json` specifies connector waypoints and label placement; `route_svg.py` applies those routes to the generated SVG. This is not claimed to be native D2 waypoint syntax.
-
-This approach follows the requirement to preserve the old block geometry. [D2's grid documentation](https://d2lang.com/tour/grid-diagrams/#connections-between-grid-cells) explains that ELK/Dagre use center-to-center straight segments within grids without path-finding. Changing general layout parameters would not meet a strict geometry-preservation requirement.
-
-The baseline raw SVG hashes are locked. A source edit that changes the baseline must be reviewed and its routes updated deliberately; the helper fails instead of silently applying stale coordinates. It also checks connector identifiers and label wording, exact node-group equality before/after, orthogonal waypoints, and centerline intersections with visible leaf-box interiors. Container backgrounds, intentional border crossings, stroke thickness, rounded elbows and wire-to-wire crossings are not a zero-collision certification. Visual inspection remains required.
-
-## Reading widths
-
-The original diagrams are dense full-page views. Open the SVG rather than reading a small thumbnail. The restored first, second and third maps use 1800, 2800 and 1000 px reading widths respectively; the two supplemental sensor traces use 1200 px. The original nine small panels retain 800 px. Actual sizes are recorded in `layout-metrics.json`; thumbnail text is not claimed readable.
-
-## D2 skill used for review and validation
-
-The public [d2-diagrams skill](https://github.com/khollingworth/d2-diagram-skill/tree/085cb0580b35d959d63ff39cc5186529b8124bbe/skills/d2-diagrams) supplies the render-and-inspect workflow. Validation can set `D2_SKILL_RENDER` to its reviewed `scripts/render.sh`; this runs its validation and ELK rendering with remote assets disabled before the routing-only pass. The temporary validation workflow pins and verifies the skill scripts. No skill is installed into the application, and no separate Codex agent execution is claimed.
+The first two diagrams are full-page references. Their documented standalone reading widths are 2100 and 3300 px. The third map keeps its 1000 px reading-width gate; the nine compact panels retain 800 px and the two supplemental traces retain 1200 px.
 
 [Return to the analysis](../README.md)
