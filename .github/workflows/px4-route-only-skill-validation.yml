@@ -1,0 +1,57 @@
+name: PX4 original layout routing (temporary)
+on:
+  push:
+    branches: [docs/px4-route-only-skill-validation]
+permissions:
+  contents: read
+jobs:
+  render:
+    if: github.repository == 'yongkyuns/nxrs' && github.ref == 'refs/heads/docs/px4-route-only-skill-validation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install checksum-verified D2 and read-only skill scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/d2" "$RUNNER_TEMP/d2-skill"
+          curl --fail --location --retry 2 https://github.com/d2lang/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz -o "$RUNNER_TEMP/d2.tar.gz"
+          echo "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9  $RUNNER_TEMP/d2.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/d2.tar.gz" -C "$RUNNER_TEMP/d2"
+          binary="$(find "$RUNNER_TEMP/d2" -type f -name d2 -print -quit)"
+          echo "$(dirname "$binary")" >> "$GITHUB_PATH"
+          for name in setup render; do
+            curl --fail --location --retry 2 "https://raw.githubusercontent.com/khollingworth/d2-diagram-skill/085cb0580b35d959d63ff39cc5186529b8124bbe/skills/d2-diagrams/scripts/$name.sh" -o "$RUNNER_TEMP/d2-skill/$name.sh"
+          done
+          test "$(git hash-object "$RUNNER_TEMP/d2-skill/setup.sh")" = 07d68f736617a4281a7d972b660e6a9e02f771f5
+          test "$(git hash-object "$RUNNER_TEMP/d2-skill/render.sh")" = 8a1217421487c5ff15ed143f45610cc0d85016bc
+          echo "D2_SKILL_RENDER=$RUNNER_TEMP/d2-skill/render.sh" >> "$GITHUB_ENV"
+      - name: Use the D2 skill, then route only the connectors
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash "$RUNNER_TEMP/d2-skill/setup.sh" --check-only
+          bash -n docs/references/px4/diagrams/render.sh
+          bash docs/references/px4/diagrams/render.sh
+          test "$(git hash-object docs/references/px4/diagrams/sensor-to-ekf-execution-map.d2)" = e32b562bda8c87c294260d8eb01aa526c2959157
+          test "$(git hash-object docs/references/px4/diagrams/execution-loops-data-flow.d2)" = 92f3baeab924b8b221284132c13be6b8dbae9d68
+          test "$(git hash-object docs/references/px4/diagrams/execution-map.d2)" = 38bac1f754ee3f745a0640fcb345c5b7d76ebe68
+          test "$(git hash-object docs/references/px4/diagrams/execution-map.svg)" = b209ef596085827de38a093f96d11700b359b54f
+      - uses: actions/upload-artifact@v4
+        with:
+          name: px4-original-layout-routed
+          path: docs/references/px4/diagrams/
+      - name: Commit generated diagrams only on validation branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/docs/px4-route-only-skill-validation
+          git add -f -- docs/references/px4/diagrams/*.svg docs/references/px4/diagrams/layout-metrics.json docs/references/px4/diagrams/routing-checks.json
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: render original PX4 design with routed connectors'
+          git push origin HEAD:refs/heads/docs/px4-route-only-skill-validation
