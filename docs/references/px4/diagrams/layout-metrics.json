@@ -71,5 +71,25 @@
     "reading_width": 1000,
     "height_at_reading_width": 717.0,
     "min_font_at_reading_width": 14.5
+  },
+  {
+    "name": "imu-to-ekf",
+    "width": 1484.0,
+    "height": 883.0,
+    "height_at_800": 476.0,
+    "min_font_at_800": 9.7,
+    "reading_width": 1200,
+    "height_at_reading_width": 714.0,
+    "min_font_at_reading_width": 14.6
+  },
+  {
+    "name": "gnss-to-ekf",
+    "width": 1484.0,
+    "height": 883.0,
+    "height_at_800": 476.0,
+    "min_font_at_800": 9.7,
+    "reading_width": 1200,
+    "height_at_reading_width": 714.0,
+    "min_font_at_reading_width": 14.6
   }
 ]

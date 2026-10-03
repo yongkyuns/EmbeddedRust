@@ -10,13 +10,27 @@
 
 This single-estimator, NuttX **flat-build** map shows four processing contexts, not the total firmware thread count. A-C run `WorkQueue::Run()`; D owns `GPS::run()`. Grey OS/IRQ services are not a fifth worker. Teal arrows represent retained uORB data and orange dashed arrows scheduling; the gyro report wakes VehicleIMU. GNSS arrivals are independent and do not add a GNSS-triggered EKF wake in this path. No NuttX HPWORK/LPWORK relay or protected kernel/userspace crossing is implied. [Worker][worker] · [Driver][icm] · [EKF2][ekf] · [Notification][callback]
 
-Open the full-size SVG for reading: 24 px source labels become about 14.5 px at 1000 px width, but only 11.6 px at 800 px. The nine compact detail panels below retain their original 800 px checks.
+Open the full-size SVG for reading: 24 px source labels become about 14.5 px at 1000 px width, but only 11.6 px at 800 px. The two focused sensor-to-EKF traces below use a 1200 px reading-width gate; the nine original compact detail panels retain their 800 px checks.
+
+### Focused sensor-to-EKF traces
+
+![IMU interrupt through acquisition, integration, selection and EKF2](diagrams/imu-to-ekf.svg)
+
+[Editable IMU D2](diagrams/imu-to-ekf.d2) · [Full-size IMU SVG](diagrams/imu-to-ekf.svg)
+
+This view isolates the IMU path: DRDY schedules the SPI-bus work item; the driver publishes raw accelerometer/gyro reports; the gyro callback schedules `VehicleIMU`; integrated `vehicle_imu` schedules the sensor voter; and `sensor_combined` schedules EKF2 back on `wq:INS0`. It also shows why one hardware DRDY does not imply one main EKF prediction/fusion step.
+
+![GNSS UART reception through receiver processing and IMU-driven EKF2 consumption](diagrams/gnss-to-ekf.svg)
+
+[Editable GNSS D2](diagrams/gnss-to-ekf.d2) · [Full-size GNSS SVG](diagrams/gnss-to-ekf.svg)
+
+This view isolates the GNSS path: the dedicated GPS task blocks on UART input and publishes `sensor_gnss`; `VehicleGPSPosition` runs on `wq:nav_and_controllers` and publishes `vehicle_gnss`; EKF2 then consumes that retained measurement during an IMU-triggered execution. GNSS arrival is therefore distinct from EKF2 wakeup and from the later delayed-horizon fusion time.
 
 ## The essential distinction
 
 **PX4 has neither one central event-processing loop nor one thread per module.** Topic storage, notification, runnable work and algorithm execution are separate mechanisms. A publication can make a consumer runnable without executing its algorithm, and multiple modules can run sequentially on one worker thread. This distinction is visible in the [publication path][node], [subscription callback][callback] and [worker loop][worker].
 
-The overview combines execution ownership and data flow; the nine detail diagrams below separate dependency, scheduling and data-flow views. Dashed arrows denote scheduling/notification where indicated; solid arrows are data flow or dependency as stated in each caption. They are not a timing trace or a promise of one context switch per arrow.
+The unified map combines execution ownership and data flow; the two focused traces isolate IMU and GNSS propagation; the nine original detail diagrams below separate dependency, scheduling and data-flow views. Dashed arrows denote scheduling/notification where indicated; solid arrows are data flow or dependency as stated in each caption. They are not a timing trace or a promise of one context switch per arrow.
 
 ## 1. What is above NuttX?
 

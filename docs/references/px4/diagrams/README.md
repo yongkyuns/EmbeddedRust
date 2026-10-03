@@ -8,6 +8,12 @@ These are actual D2 sources with checked-in SVG output. They use a local **Mater
 
 The full-page map is 1654 x 1186. Its actual 24 px labels scale to **14.5 px at 1000 px width**, with 717 px height. At 800 px, labels are **11.6 px** and height is 573.6 px: open the standalone SVG, rather than treating the inline thumbnail as the reading view. `check.py` explicitly uses a separate 1000 px gate (minimum 14 px text, maximum 760 px height, landscape aspect at least 1.35) for this map. The original nine panels retain their 800 px, minimum-14-px, maximum-440-px gates unchanged. `layout-metrics.json` records both widths for the new map.
 
+## Focused IMU and GNSS traces
+
+[imu-to-ekf.d2](imu-to-ekf.d2) / [imu-to-ekf.svg](imu-to-ekf.svg) and [gnss-to-ekf.d2](gnss-to-ekf.d2) / [gnss-to-ekf.svg](gnss-to-ekf.svg) are the two focused companions to the unified map. Each is 1484 × 883 with 18 px minimum source labels. At the documented 1200 px reading width they render at about **714 px high** with **14.6 px minimum text**. At 800 px they are intentionally too small for the compact-panel gate, so open the standalone SVG when reading them.
+
+The IMU trace separates interrupt scheduling, the SPI worker, VehicleIMU integration, sensor voting and EKF2 execution. The GNSS trace separates UART/GPS-task acquisition, VehicleGPSPosition processing, retained vehicle_gnss data and the later IMU-driven EKF2 run. Neither embeds a raster image.
+
 ## Layout contract
 
 Use left-to-right landscape panels with 20 px source labels and explicit, compact node sizes. Split the outer and inner control paths instead of stretching one unreadable mega-diagram. Put implementation qualifications in the surrounding prose rather than tiny arrow labels. Colors distinguish application, contract, implementation, adaptation and hardware roles; captions identify whether each panel represents data, scheduling or dependencies.
@@ -40,7 +46,7 @@ Requirements: **D2 v0.9.0** and Python 3.9 or newer. From the repository root:
 bash docs/references/px4/diagrams/render.sh
 ```
 
-Or set `D2=/absolute/path/to/d2`. The script checks the renderer version, uses ELK, theme 0 and 16 px padding, then validates XML, landscape aspect and actual label sizes using the two documented reading-width gates above. It regenerates `layout-metrics.json` as well as the SVGs. Do not hand-edit SVGs or claim the size checks replace visual inspection.
+Or set `D2=/absolute/path/to/d2`. The script checks the renderer version, uses ELK, theme 0 and 16 px padding, then validates XML, landscape aspect and actual label sizes using the three documented reading-width gates above: 800 px for compact panels, 1000 px for the unified map and 1200 px for the focused IMU/GNSS traces. It regenerates `layout-metrics.json` as well as the SVGs. Do not hand-edit SVGs or claim the size checks replace visual inspection.
 
 The verified Linux-amd64 D2 v0.9.0 archive used by the [successful rendering run](https://github.com/yongkyuns/nxrs/actions/runs/37014223427) had SHA-256 `5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9`. Other platforms need their own official binary/checksum, not this Linux checksum.
 
