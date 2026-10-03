@@ -2,35 +2,41 @@
 
 **Research reference · 2026-10-02 · non-normative.** This note follows PX4 source at `b798249a61af32c355d95decd2805a6ab4e9d9f1`, using the multicopter path as a concrete example. It is not a proposal to import PX4 into nxrs. Configuration, aircraft type, sensor selection and target can change the paths shown. [Exact snapshots and evidence](sources.md) · [nxrs design implications](nxrs-design-notes.md) · [Diagram reproduction](diagrams/README.md).
 
-## Start here: one execution map
+## Start here: the three execution/data-flow infographics
+
+These three D2 sources are **visual recreations of the three PX4 execution/data-flow diagrams discussed in this thread**, rather than alternate decompositions of the same concepts. The banding, execution-context grouping, uORB strip, legends and arrow roles intentionally follow those diagrams. Factual corrections are called out instead of preserving misleading kernel/userspace implications.
+
+### 1. PX4 Sensor-to-EKF Execution Map
+
+![PX4 Sensor-to-EKF Execution Map](diagrams/sensor-to-ekf-execution-map.svg)
+
+[Editable D2](diagrams/sensor-to-ekf-execution-map.d2) · [Full-size SVG](diagrams/sensor-to-ekf-execution-map.svg)
+
+This is the banded **Hardware & NuttX → PX4 worker contexts → uORB** view with the four sensor-to-estimator execution contexts: `wq:SPIx`, `wq:INS0`, `wq:nav_and_controllers`, and the dedicated GPS task. It preserves separate data and wakeup paths. The correction versus the original raster is explicit: PX4 `wq:*` workers are not NuttX HPWORK/LPWORK, and a flat build does not imply a protected kernel/userspace address-space crossing.
+
+### 2. PX4 Execution Loops and Data Flow
+
+![PX4 Execution Loops and Data Flow](diagrams/execution-loops-data-flow.svg)
+
+[Editable D2](diagrams/execution-loops-data-flow.d2) · [Full-size SVG](diagrams/execution-loops-data-flow.svg)
+
+This is the horizontal-band view: **hardware/interrupts → NuttX scheduling + PX4 execution contexts → PX4 modules/work items → uORB topics**, with the original control-side context retained. The blue execution-context band is deliberately labelled as NuttX scheduling plus PX4 worker threads rather than calling the PX4 queues kernel work queues.
+
+### 3. Four execution loops, one sensor-to-estimator map
 
 ![Four PX4 processing loops with separate data and wakeup paths](diagrams/execution-map.svg)
 
 [Editable D2](diagrams/execution-map.d2) · [Full-size SVG](diagrams/execution-map.svg)
 
-This single-estimator, NuttX **flat-build** map shows four processing contexts, not the total firmware thread count. A-C run `WorkQueue::Run()`; D owns `GPS::run()`. Grey OS/IRQ services are not a fifth worker. Teal arrows represent retained uORB data and orange dashed arrows scheduling; the gyro report wakes VehicleIMU. GNSS arrivals are independent and do not add a GNSS-triggered EKF wake in this path. No NuttX HPWORK/LPWORK relay or protected kernel/userspace crossing is implied. [Worker][worker] · [Driver][icm] · [EKF2][ekf] · [Notification][callback]
+This is the timeline/lifeline-style map: IRQ/OS services plus the A-D execution columns, followed by the IMU and GNSS propagation traces. A-C run `WorkQueue::Run()`; D owns `GPS::run()`. Teal is retained uORB data, orange dashed is scheduling/wakeup, and grey is device/OS I/O. GNSS arrival does not add a GNSS-triggered EKF wake in the shown single-estimator path.
 
-Open the full-size SVG for reading: 24 px source labels become about 14.5 px at 1000 px width, but only 11.6 px at 800 px. The two focused sensor-to-EKF traces below use a 1200 px reading-width gate; the nine original compact detail panels retain their 800 px checks.
-
-### Focused sensor-to-EKF traces
-
-![IMU interrupt through acquisition, integration, selection and EKF2](diagrams/imu-to-ekf.svg)
-
-[Editable IMU D2](diagrams/imu-to-ekf.d2) · [Full-size IMU SVG](diagrams/imu-to-ekf.svg)
-
-This view isolates the IMU path: DRDY schedules the SPI-bus work item; the driver publishes raw accelerometer/gyro reports; the gyro callback schedules `VehicleIMU`; integrated `vehicle_imu` schedules the sensor voter; and `sensor_combined` schedules EKF2 back on `wq:INS0`. It also shows why one hardware DRDY does not imply one main EKF prediction/fusion step.
-
-![GNSS UART reception through receiver processing and IMU-driven EKF2 consumption](diagrams/gnss-to-ekf.svg)
-
-[Editable GNSS D2](diagrams/gnss-to-ekf.d2) · [Full-size GNSS SVG](diagrams/gnss-to-ekf.svg)
-
-This view isolates the GNSS path: the dedicated GPS task blocks on UART input and publishes `sensor_gnss`; `VehicleGPSPosition` runs on `wq:nav_and_controllers` and publishes `vehicle_gnss`; EKF2 then consumes that retained measurement during an IMU-triggered execution. GNSS arrival is therefore distinct from EKF2 wakeup and from the later delayed-horizon fusion time.
+All three are source diagrams, not raster images embedded in D2. They describe the concrete single-estimator example pinned to PX4 `b798249a`; exact contexts depend on board and configuration.
 
 ## The essential distinction
 
 **PX4 has neither one central event-processing loop nor one thread per module.** Topic storage, notification, runnable work and algorithm execution are separate mechanisms. A publication can make a consumer runnable without executing its algorithm, and multiple modules can run sequentially on one worker thread. This distinction is visible in the [publication path][node], [subscription callback][callback] and [worker loop][worker].
 
-The unified map combines execution ownership and data flow; the two focused traces isolate IMU and GNSS propagation; the nine original detail diagrams below separate dependency, scheduling and data-flow views. Dashed arrows denote scheduling/notification where indicated; solid arrows are data flow or dependency as stated in each caption. They are not a timing trace or a promise of one context switch per arrow.
+The three overview infographics above present the same execution architecture in complementary layouts; the nine original detail diagrams below isolate dependency, scheduling and data-flow mechanisms. Dashed arrows denote scheduling/notification where indicated; solid arrows are data flow or dependency as stated in each caption. They are not a timing trace or a promise of one context switch per arrow.
 
 ## 1. What is above NuttX?
 

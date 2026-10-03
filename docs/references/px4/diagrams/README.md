@@ -2,17 +2,17 @@
 
 These are actual D2 sources with checked-in SVG output. They use a local **Material-style palette**, adapted from the Zephyr reference, not a named built-in D2 theme. There are no imports from other reference directories.
 
-## Unified execution map
+## Three faithful execution/data-flow recreations
 
-[execution-map.d2](execution-map.d2) is the self-contained D2 conversion of the corrected four-loop illustration; [execution-map.svg](execution-map.svg) is its generated output. It contains no image imports. Named grid anchors maintain aligned columns and keep data arrows separate from dashed wake notifications. This is a compact grid-based execution map, not a globally ordered sequence trace.
+The overview now contains three self-contained D2 recreations of the three execution/data-flow infographics discussed during review:
 
-The full-page map is 1654 x 1186. Its actual 24 px labels scale to **14.5 px at 1000 px width**, with 717 px height. At 800 px, labels are **11.6 px** and height is 573.6 px: open the standalone SVG, rather than treating the inline thumbnail as the reading view. `check.py` explicitly uses a separate 1000 px gate (minimum 14 px text, maximum 760 px height, landscape aspect at least 1.35) for this map. The original nine panels retain their 800 px, minimum-14-px, maximum-440-px gates unchanged. `layout-metrics.json` records both widths for the new map.
+- [sensor-to-ekf-execution-map.d2](sensor-to-ekf-execution-map.d2) / [SVG](sensor-to-ekf-execution-map.svg): banded hardware/NuttX, PX4 worker, uORB and legend view.
+- [execution-loops-data-flow.d2](execution-loops-data-flow.d2) / [SVG](execution-loops-data-flow.svg): horizontal hardware, scheduling/execution, module and uORB layers, including the control-side context.
+- [execution-map.d2](execution-map.d2) / [SVG](execution-map.svg): A-D execution-column/lifeline view of the IMU and GNSS propagation paths.
 
-## Focused IMU and GNSS traces
+None embeds a raster image. They intentionally preserve the visual grouping and arrow roles of the corresponding raster diagrams while correcting two potentially misleading implications: PX4 `wq:*` workers are not NuttX HPWORK/LPWORK, and the NuttX flat-build diagram boundary is a responsibility boundary rather than a protected user/kernel address-space split.
 
-[imu-to-ekf.d2](imu-to-ekf.d2) / [imu-to-ekf.svg](imu-to-ekf.svg) and [gnss-to-ekf.d2](gnss-to-ekf.d2) / [gnss-to-ekf.svg](gnss-to-ekf.svg) are the two focused companions to the unified map. Each is 1484 × 883 with 18 px minimum source labels. At the documented 1200 px reading width they render at about **714 px high** with **14.6 px minimum text**. At 800 px they are intentionally too small for the compact-panel gate, so open the standalone SVG when reading them.
-
-The IMU trace separates interrupt scheduling, the SPI worker, VehicleIMU integration, sensor voting and EKF2 execution. The GNSS trace separates UART/GPS-task acquisition, VehicleGPSPosition processing, retained vehicle_gnss data and the later IMU-driven EKF2 run. Neither embeds a raster image.
+These are full-page reference diagrams; open the standalone SVG when reading dense labels. The original compact panels below retain their separate 800 px readability checks.
 
 ## Layout contract
 
