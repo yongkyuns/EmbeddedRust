@@ -12,6 +12,8 @@ jobs:
     if: github.repository == 'yongkyuns/nxrs' && github.ref == 'refs/heads/docs/px4-reference-render-20261002'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Install checksum-verified D2 v0.9.0
@@ -19,26 +21,76 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/px4-d2"
-          curl --fail --location --retry 2 https://github.com/d2lang/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz -o "$RUNNER_TEMP/d2-v0.9.0-linux-amd64.tar.gz"
-          echo "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9  $RUNNER_TEMP/d2-v0.9.0-linux-amd64.tar.gz" | sha256sum --check
-          tar -xzf "$RUNNER_TEMP/d2-v0.9.0-linux-amd64.tar.gz" -C "$RUNNER_TEMP/px4-d2"
+          curl --fail --location --retry 2 https://github.com/d2lang/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz -o "$RUNNER_TEMP/d2.tar.gz"
+          echo "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9  $RUNNER_TEMP/d2.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/d2.tar.gz" -C "$RUNNER_TEMP/px4-d2"
           binary="$(find "$RUNNER_TEMP/px4-d2" -type f -name d2 -print -quit)"
           test -n "$binary"
           echo "$(dirname "$binary")" >> "$GITHUB_PATH"
           "$binary" --version
-      - uses: actions/upload-artifact@v4
-        with:
-          name: px4-d2-toolchain
-          path: ${{ runner.temp }}/d2-v0.9.0-linux-amd64.tar.gz
-          retention-days: 1
-      - name: Render and validate diagrams
+      - name: Render and verify inspected map
         shell: bash
         run: |
           set -euo pipefail
           bash -n docs/references/px4/diagrams/render.sh
           bash docs/references/px4/diagrams/render.sh
+          test "$(git hash-object docs/references/px4/diagrams/execution-map.svg)" = b209ef596085827de38a093f96d11700b359b54f
+      - name: Add overview links to pinned reference text
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin 153494e1504324d5c00e07545a77187078c8284a
+          git show 153494e1504324d5c00e07545a77187078c8284a:docs/references/px4/README.md > "$RUNNER_TEMP/px4-main.md"
+          git show 153494e1504324d5c00e07545a77187078c8284a:docs/references/px4/diagrams/README.md > "$RUNNER_TEMP/px4-diagrams.md"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          tmp = Path(os.environ['RUNNER_TEMP'])
+          root = Path('docs/references/px4')
+          text = (tmp / 'px4-main.md').read_text()
+          anchor = '## The essential distinction\n'
+          assert text.count(anchor) == 1
+          overview = '''## Start here: one execution map
+
+          ![Four PX4 processing loops with separate data and wakeup paths](diagrams/execution-map.svg)
+
+          [Editable D2](diagrams/execution-map.d2) · [Full-size SVG](diagrams/execution-map.svg)
+
+          This single-estimator, NuttX **flat-build** map shows four processing contexts, not the total firmware thread count. A-C run `WorkQueue::Run()`; D owns `GPS::run()`. Grey OS/IRQ services are not a fifth worker. Teal arrows represent retained uORB data and orange dashed arrows scheduling; the gyro report wakes VehicleIMU. GNSS arrivals are independent and do not add a GNSS-triggered EKF wake in this path. No NuttX HPWORK/LPWORK relay or protected kernel/userspace crossing is implied. [Worker][worker] · [Driver][icm] · [EKF2][ekf] · [Notification][callback]
+
+          Open the full-size SVG for reading: 24 px source labels become about 14.5 px at 1000 px width, but only 11.6 px at 800 px. The nine compact detail panels below retain their original 800 px checks.
+
+          '''
+          text = text.replace(anchor, overview + anchor, 1)
+          text = text.replace('The nine diagrams separate dependency, scheduling and data-flow views.', 'The overview combines execution ownership and data flow; the nine detail diagrams below separate dependency, scheduling and data-flow views.')
+          (root / 'README.md').write_text(text)
+          text = (tmp / 'px4-diagrams.md').read_text()
+          anchor = '## Layout contract\n'
+          assert text.count(anchor) == 1
+          overview = '''## Unified execution map
+
+          [execution-map.d2](execution-map.d2) is the self-contained D2 conversion of the corrected four-loop illustration; [execution-map.svg](execution-map.svg) is its generated output. It contains no image imports. Named grid anchors maintain aligned columns and keep data arrows separate from dashed wake notifications. This is a compact grid-based execution map, not a globally ordered sequence trace.
+
+          The full-page map is 1654 x 1186. Its actual 24 px labels scale to **14.5 px at 1000 px width**, with 717 px height. At 800 px, labels are **11.6 px** and height is 573.6 px: open the standalone SVG, rather than treating the inline thumbnail as the reading view. `check.py` explicitly uses a separate 1000 px gate (minimum 14 px text, maximum 760 px height, landscape aspect at least 1.35) for this map. The original nine panels retain their 800 px, minimum-14-px, maximum-440-px gates unchanged. `layout-metrics.json` records both widths for the new map.
+
+          '''
+          text = text.replace(anchor, overview + anchor, 1)
+          text = text.replace('then validates XML, landscape aspect, height at reading width (at most 440 px) and minimum actual label size (at least 14 px).', 'then validates XML, landscape aspect and actual label sizes using the two documented reading-width gates above.')
+          (root / 'diagrams/README.md').write_text(text)
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: px4-reference-diagrams
-          path: docs/references/px4/diagrams/
+          name: px4-execution-map-reference
+          path: docs/references/px4/
+      - name: Publish only generated reference assets on temporary branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/docs/px4-reference-render-20261002
+          git add -- docs/references/px4/README.md docs/references/px4/diagrams/README.md docs/references/px4/diagrams/execution-map.svg docs/references/px4/diagrams/layout-metrics.json
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: render checked D2 execution map and link overview'
+          git push origin HEAD:refs/heads/docs/px4-reference-render-20261002
