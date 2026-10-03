@@ -1,72 +1,116 @@
-# PX4 b798249a; NuttX flat build; SENS_IMU_MODE=1. Not a firmware timing trace.
-# Wiring rule: regular ELK graphs inside each row, never cross-grid connections.
+# Faithful D2 recreation of the PX4 Sensor-to-EKF Execution Map infographic.
+# Source snapshot: PX4 b798249a, NuttX flat build, SENS_IMU_MODE=1.
 vars: { d2-config: { layout-engine: elk; theme-id: 0 } }
-grid-columns: 1
-vertical-gap: 14
-style.fill: "#FFFFFF"
+grid-rows: 5
+vertical-gap: 12
+style: { fill: "#FFFFFF"; font-size: 18 }
 classes: {
-  plain: { style: { fill: "transparent"; stroke: "transparent" } }
-  hw: { style: { fill: "#ECEFF1"; stroke: "#607D8B"; font-color: "#263238"; border-radius: 10; font-size: 26; bold: false } }
-  a: { style: { fill: "#E8F5E9"; stroke: "#388E3C"; font-color: "#1B5E20"; border-radius: 10; font-size: 26; bold: false } }
-  b: { style: { fill: "#E8EAF6"; stroke: "#5C6BC0"; font-color: "#283593"; border-radius: 10; font-size: 26; bold: false } }
-  c: { style: { fill: "#FFF3E0"; stroke: "#FB8C00"; font-color: "#6D4C41"; border-radius: 10; font-size: 26; bold: false } }
-  d: { style: { fill: "#F3E5F5"; stroke: "#AB47BC"; font-color: "#6A1B9A"; border-radius: 10; font-size: 26; bold: false } }
-  e: { style: { fill: "#E3F2FD"; stroke: "#1E88E5"; font-color: "#0D47A1"; border-radius: 10; font-size: 26; bold: false } }
-  topic: { style: { fill: "#E0F2F1"; stroke: "#00897B"; font-color: "#004D40"; border-radius: 10; font-size: 26; bold: false } }
-  data: { style: { stroke: "#00897B"; font-color: "#00695C"; stroke-width: 3; font-size: 24 } }
-  wake: { style: { stroke: "#E65100"; font-color: "#BF360C"; stroke-dash: 5; stroke-width: 3; font-size: 24 } }
-  io: { style: { stroke: "#607D8B"; font-color: "#455A64"; stroke-width: 3; font-size: 24 } }
-  call: { style: { stroke: "#5C6BC0"; font-color: "#3949AB"; stroke-width: 2; font-size: 24 } }
+  band: { style: { border-radius: 12; stroke-width: 2; font-size: 18 } }
+  node: { style: { fill: "#F8FBFF"; stroke: "#225EA8"; border-radius: 9; font-size: 18 } }
+  loop: { style: { fill: "#FFFFFF"; stroke: "#8EA6B8"; border-radius: 8; font-size: 17 } }
+  topic: { style: { fill: "#FFFFFF"; stroke: "#35AFA6"; border-radius: 7; font-size: 17 } }
+  data: { style: { stroke: "#00897B"; font-color: "#00695C"; stroke-width: 3; font-size: 17 } }
+  wake: { style: { stroke: "#F57C00"; font-color: "#E65100"; stroke-width: 3; stroke-dash: 6; font-size: 17 } }
+  io: { style: { stroke: "#6B7D8A"; font-color: "#455A64"; stroke-width: 3; font-size: 17 } }
 }
-
-title: "PX4 sensor-to-EKF execution map" { shape: text; style: { font-size: 38; bold: true; font-color: "#163047" } }
-scope: "4 processing contexts: A SPI worker  ·  B INS0 worker  ·  C navigation worker  ·  D GPS task\nRepeated A/B/C/D labels below refer to the SAME threads, not additional loops." { shape: text; style: { font-size: 26; font-color: "#455A64" } }
-entry: "HARDWARE / NUTTX I/O — no HPWORK / LPWORK relay in the shown IMU path" {
- class: plain
- style: { font-size: 26; font-color: "#455A64" }
- grid-columns: 2
- horizontal-gap: 30
- imu: "" {
-  class: plain
-  direction: right
-  device: "SPI IMU\nDRDY interrupt" {class: hw; width: 265; height: 125}
-  worker: "A · wq:SPIx\nDriver becomes runnable\nSPI FIFO read via NuttX" {class: a; width: 340; height: 125}
-  device -> worker: "timestamp +\nScheduleNow()" {class: wake}
- }
- gnss: "" {
-  class: plain
-  direction: right
-  uart: "GNSS / NuttX UART\nIRQ + receive buffer" {class: hw; width: 285; height: 125}
-  task: "D · GPS task\nBlocking receive resumes\nUBX / NMEA parsing" {class: d; width: 340; height: 125}
-  uart -> task: "bytes +\nread/poll wake" {class: io}
- }
+title: "PX4 Sensor-to-EKF Execution Map (NuttX, single-estimator example)" { shape: text; style: { font-size: 30; bold: true; font-color: "#0B2545" } }
+subtitle: "Where the execution loops live, and how data travels from kernel/driver to PX4 modules" { shape: text; style: { font-size: 21; bold: true; font-color: "#0B2545" } }
+hardware: "Hardware & NuttX services — flat build, shared address space" {
+  class: band
+  style: { fill: "#EAF4FD"; stroke: "#8CB9D9"; font-color: "#163047" }
+  grid-rows: 2
+  vertical-gap: 12
+  devices: "" {
+    grid-columns: 5
+    horizontal-gap: 24
+    style.opacity: 0
+    imu: "SPI IMU\n(ICM42688P)\nFIFO + DRDY interrupt" { class: node; width: 245; height: 105 }
+    spi: "NuttX SPI support\nspi_driver / DMA / bus" { class: node; width: 245; height: 105 }
+    os: "NuttX scheduler, semaphores, interrupts, device drivers\nPX4 wq:* worker threads are separate from HPWORK / LPWORK" { class: node; width: 350; height: 105; style.fill: "#F3F8FD" }
+    gnss: "GNSS receiver\n(u-blox, etc.)\nUART (UBX/NMEA)" { class: node; width: 245; height: 105 }
+    uart: "NuttX UART driver\nserial IRQ + RX buffer" { class: node; width: 245; height: 105 }
+  }
+  note: "Flat build: one shared address space. This is a logical responsibility split, not a protected user/kernel boundary." {
+    style: { fill: "#FFF7DD"; stroke: "#D6B65A"; border-radius: 8; font-size: 17; font-color: "#5D4037" }
+  }
 }
-imu: "IMU PATH — separate payload and wakeup wires; each arrow stays between adjacent stages" {
- class: plain
- style: { font-size: 26; font-color: "#163047" }
- direction: right
- driver: "A · wq:SPIx\nICM42688P::RunImpl()\nRead / check FIFO\nPublish sensor reports" {class: a; width: 320; height: 185}
- integrate: "B · wq:INS0\nVehicleIMU::Run()\nRead accel + gyro\nIntegrate delta angle / velocity" {class: b; width: 365; height: 185}
- vote: "C · navigation worker\nSensors::Run()\nSelect / vote IMU\nPublish selected sample" {class: c; width: 320; height: 185}
- estimate: "B · SAME wq:INS0\nEKF2::Run()\nIngest IMU; propagate output\nMain EKF step when ready" {class: b; width: 350; height: 185}
- driver -> integrate: "sensor_accel\nsensor_gyro" {class: data}
- driver -> integrate: "gyro callback" {class: wake}
- integrate -> vote: "vehicle_imu" {class: data}
- integrate -> vote: "schedule Sensors" {class: wake}
- vote -> estimate: "sensor_combined" {class: data}
- vote -> estimate: "schedule EKF2" {class: wake}
+app: "PX4 application execution contexts" {
+  class: band
+  style: { fill: "#EAF7FF"; stroke: "#38A5DF"; font-color: "#163047" }
+  grid-rows: 2
+  vertical-gap: 16
+  workers: "" {
+    grid-columns: 4
+    horizontal-gap: 24
+    style.opacity: 0
+    A: "A. wq:SPIx — PX4 worker thread\n(IMU driver runs here)" {
+      style: { fill: "#E8F8E8"; stroke: "#52B85B"; border-radius: 10; font-size: 19; bold: true }
+      grid-rows: 2
+      vertical-gap: 12
+      loop: "Work queue loop\nwait → dequeue → Run() → repeat" { class: loop; width: 290; height: 72 }
+      drv: "ICM42688P::RunImpl()\nread FIFO / check errors\ndecode samples\npublish sensor_accel\npublish sensor_gyro" { class: node; width: 290; height: 155 }
+    }
+    B: "B. wq:INS0 — PX4 worker thread\nVehicleIMU and EKF2 share one thread" {
+      style: { fill: "#FFE9EA"; stroke: "#FF6B6B"; border-radius: 10; font-size: 19; bold: true }
+      grid-rows: 3
+      vertical-gap: 10
+      loop: "Work queue loop\nwait → dequeue → Run() → repeat" { class: loop; width: 300; height: 68 }
+      vimu: "VehicleIMU::Run()\nread accel + gyro reports\nintegrate delta angle / velocity\npublish vehicle_imu\nwhen integration window ready" { class: node; width: 300; height: 140 }
+      ekf: "EKF2::Run()\nsetIMUData(): output propagation\nmain update when downsample ready\npredict + fuse eligible inputs\npublish estimator outputs" { class: node; width: 300; height: 145 }
+    }
+    C: "C. wq:nav_and_controllers — PX4 worker\nSensors + VehicleGPSPosition share one thread" {
+      style: { fill: "#FFF4D9"; stroke: "#F4C542"; border-radius: 10; font-size: 19; bold: true }
+      grid-rows: 3
+      vertical-gap: 10
+      loop: "Work queue loop\nwait → dequeue → Run() → repeat" { class: loop; width: 310; height: 68 }
+      sensors: "Sensors::Run()\nselect / vote IMU(s)\npublish sensor_combined" { class: node; width: 310; height: 110 }
+      gpspos: "VehicleGPSPosition::Run()\ncheck / select GNSS\ntime alignment / validation\npublish vehicle_gnss" { class: node; width: 310; height: 125 }
+    }
+    D: "D. GPS task — dedicated task\nblocking receive loop" {
+      style: { fill: "#F2E8FA"; stroke: "#A070DB"; border-radius: 10; font-size: 19; bold: true }
+      grid-rows: 2
+      vertical-gap: 12
+      loop: "Task loop\nwait for bytes → parse → publish → repeat" { class: loop; width: 285; height: 72 }
+      gpsrun: "GPS::run()\nread UART (blocking)\nparse UBX / NMEA\npublish sensor_gnss\nwhen a complete solution is available" { class: node; width: 285; height: 155 }
+    }
+  }
+  uorb: "uORB topic storage — retained typed data + notifications; NOT a thread" {
+    style: { fill: "#DFF5F2"; stroke: "#22A69A"; border-radius: 10; font-size: 20; bold: true; font-color: "#163047" }
+    grid-columns: 7
+    horizontal-gap: 16
+    accel: "sensor_accel" { class: topic; width: 180; height: 50 }
+    gyro: "sensor_gyro" { class: topic; width: 180; height: 50 }
+    vimu: "vehicle_imu" { class: topic; width: 180; height: 50 }
+    combined: "sensor_combined" { class: topic; width: 180; height: 50 }
+    vgnss: "vehicle_gnss" { class: topic; width: 180; height: 50 }
+    sgnss: "sensor_gnss" { class: topic; width: 180; height: 50 }
+    more: "…" { class: topic; width: 120; height: 50 }
+  }
 }
-gnss: "GNSS PATH — acquisition is independent; EKF2 reads GNSS during an IMU-driven run" {
- class: plain
- style: { font-size: 26; font-color: "#163047" }
- direction: right
- receive: "D · GPS task\nGPS::run() owns the loop\nReceive → parse → publish\nRepeat / block for more bytes" {class: d; width: 340; height: 185}
- process: "C · navigation worker\nVehicleGPSPosition::Run()\nCheck / select / blend GNSS\nPrepare measurement time" {class: c; width: 360; height: 185}
- topic: "vehicle_gnss\nuORB retained data\nNOT a thread\nNo EKF2 wake callback here" {class: topic; width: 340; height: 185}
- estimate: "B · SAME EKF2 instance\nOn an IMU-driven Run()\nRead new GNSS → buffer\nFuse when time / checks allow" {class: b; width: 355; height: 185}
- receive -> process: "sensor_gnss" {class: data}
- receive -> process: "schedule GNSS work" {class: wake}
- process -> topic: "publish" {class: data}
- topic -> estimate: "read\nNO wake" {class: data}
+hardware.devices.imu <-> hardware.devices.spi: "SPI bus bytes" { class: io }
+hardware.devices.gnss <-> hardware.devices.uart: "UART RX bytes" { class: io }
+hardware.devices.imu -> app.workers.A.drv: "1. DRDY interrupt\ntimestamp + ScheduleNow()\nDoes NOT execute EKF" { class: wake }
+hardware.devices.uart -> app.workers.D.gpsrun: "UART data available\nwake via read/poll" { class: io }
+app.workers.A.drv -> app.uorb.accel: "publish" { class: data }
+app.workers.A.drv -> app.uorb.gyro: "publish" { class: data }
+app.uorb.gyro -> app.workers.B.vimu: "read" { class: data }
+app.workers.A.drv -> app.workers.B.vimu: "2. schedule VehicleIMU" { class: wake }
+app.workers.B.vimu -> app.uorb.vimu: "publish" { class: data }
+app.uorb.vimu -> app.workers.C.sensors: "read" { class: data }
+app.workers.B.vimu -> app.workers.C.sensors: "3. schedule Sensors" { class: wake }
+app.workers.C.sensors -> app.uorb.combined: "publish" { class: data }
+app.uorb.combined -> app.workers.B.ekf: "read" { class: data }
+app.workers.C.sensors -> app.workers.B.ekf: "5. schedule EKF2" { class: wake }
+app.workers.D.gpsrun -> app.uorb.sgnss: "publish" { class: data }
+app.uorb.sgnss -> app.workers.C.gpspos: "read" { class: data }
+app.workers.D.gpsrun -> app.workers.C.gpspos: "6. schedule VehicleGPSPosition" { class: wake }
+app.workers.C.gpspos -> app.uorb.vgnss: "publish" { class: data }
+app.uorb.vgnss -> app.workers.B.ekf: "read on IMU run\nNO GNSS-triggered EKF wake" { class: data }
+bottom: "" {
+  grid-columns: 3
+  horizontal-gap: 18
+  style.opacity: 0
+  legend: "Legend\nTEAL: topic data flow (uORB publish/read)\nORANGE DASHED: scheduling / wake only\nGREY: device bytes / OS I/O" { style: { fill: "#FFFFFF"; stroke: "#B8C5CF"; border-radius: 9; font-size: 17; font-color: "#163047" }; width: 430; height: 120 }
+  orbnote: "uORB = retained typed data + notification\n• publish copies data into topic storage\n• callback usually calls ScheduleNow() on subscriber work item\n• consumer runs later in its worker and reads data\n• there is no central uORB broker thread" { style: { fill: "#E8F3FF"; stroke: "#8CB9D9"; border-radius: 9; font-size: 17; font-color: "#163047" }; width: 560; height: 120 }
+  key: "Key points\n• four sensor-to-EKF processing contexts shown\n• PX4 worker threads are not NuttX HPWORK/LPWORK\n• DRDY schedules the driver, not EKF\n• GNSS does not wake EKF in this path\n• other firmware contexts are omitted" { style: { fill: "#FFE9EA"; stroke: "#FF8A95"; border-radius: 9; font-size: 17; font-color: "#163047" }; width: 470; height: 120 }
 }
-legend: "TEAL: uORB publication → retained data → later read.   ORANGE DASHED: schedule / wake only.   GREY: device / OS I/O.\nA–C each run WorkQueue::Run(): wait → dequeue → work-item Run() → repeat. C = wq:nav_and_controllers.\nuORB has no central broker thread. Flat build: shared address space, not a protected kernel/user crossing.\nDRDY count ≠ integration count ≠ main EKF step count. Timers, the manager and other firmware contexts are omitted." {style: {fill: "#F5F7FA";stroke: "#CFD8DC";font-size: 24;font-color: "#37474F";bold: false;border-radius: 10}}

@@ -2,37 +2,35 @@
 
 **Research reference · 2026-10-02 · non-normative.** This note follows PX4 source at `b798249a61af32c355d95decd2805a6ab4e9d9f1`, using the multicopter path as a concrete example. It is not a proposal to import PX4 into nxrs. Configuration, aircraft type, sensor selection and target can change the paths shown. [Exact snapshots and evidence](sources.md) · [nxrs design implications](nxrs-design-notes.md) · [Diagram reproduction](diagrams/README.md).
 
-## Start here: execution, data and wakeups
+## Start here: the three execution/data-flow infographics
 
-The three primary D2 views have been fully relaid out to remove cross-block wiring. They keep the same PX4 sensor-to-EKF scope, but no longer try to match the earlier raster geometry. Open the standalone SVGs for reading; the inline images are previews.
+These three D2 sources are **visual recreations of the three PX4 execution/data-flow diagrams discussed in this thread**, rather than alternate decompositions of the same concepts. The banding, execution-context grouping, uORB strip, legends and arrow roles intentionally follow those diagrams. Factual corrections are called out instead of preserving misleading kernel/userspace implications.
 
-### 1. Sensor-to-EKF overview
+### 1. PX4 Sensor-to-EKF Execution Map
 
-![PX4 sensor-to-EKF overview with separate IMU and GNSS lanes](diagrams/sensor-to-ekf-execution-map.svg)
+![PX4 Sensor-to-EKF Execution Map](diagrams/sensor-to-ekf-execution-map.svg)
 
 [Editable D2](diagrams/sensor-to-ekf-execution-map.d2) · [Full-size SVG](diagrams/sensor-to-ekf-execution-map.svg)
 
-The upper row shows hardware/OS entry. The IMU and GNSS rows then show processing and topic handoffs left to right. **Repeated A/B/C/D labels are references to the same four execution contexts**, not new threads. In particular, VehicleIMU and EKF2 both run on B (`wq:INS0`), and the voter and GNSS processing both run on C (`wq:nav_and_controllers`). [Worker][worker] · [EKF2][ekf] · [GPS driver][gps]
+This is the banded **Hardware & NuttX → PX4 worker contexts → uORB** view with the four sensor-to-estimator execution contexts: `wq:SPIx`, `wq:INS0`, `wq:nav_and_controllers`, and the dedicated GPS task. It preserves separate data and wakeup paths. The correction versus the original raster is explicit: PX4 `wq:*` workers are not NuttX HPWORK/LPWORK, and a flat build does not imply a protected kernel/userspace address-space crossing.
 
-Teal links abstract publication into retained uORB storage and the consumer's later read; they are not direct calls into the consumer. Orange dashed links separately identify callback scheduling. GNSS's final `vehicle_gnss` link is **data only, with no GNSS-triggered EKF2 wake** in this path. No common data bus or central dispatcher is implied. [Publication][node] · [Callback][callback] · [EKF2][ekf]
+### 2. PX4 Execution Loops and Data Flow
 
-### 2. Execution-context ownership and the control-side path
-
-![PX4 worker cards with nested modules and a separate control-flow row](diagrams/execution-loops-data-flow.svg)
+![PX4 Execution Loops and Data Flow](diagrams/execution-loops-data-flow.svg)
 
 [Editable D2](diagrams/execution-loops-data-flow.d2) · [Full-size SVG](diagrams/execution-loops-data-flow.svg)
 
-Each card is one OS execution context. Nested boxes are the work items it calls, not additional loops. Containment replaces the earlier scheduler-to-every-module wiring. The control worker E is included, and its data path is shown in its own horizontal row. Card order does not prescribe dispatch order. These selected contexts are not the total firmware thread count. [Worker][worker] · [Gyro processing][angular] · [Rate control][rate] · [Allocation][allocation]
+This is the horizontal-band view: **hardware/interrupts → NuttX scheduling + PX4 execution contexts → PX4 modules/work items → uORB topics**, with the original control-side context retained. The blue execution-context band is deliberately labelled as NuttX scheduling plus PX4 worker threads rather than calling the PX4 queues kernel work queues.
 
-### 3. Four-loop sequence view
+### 3. Four execution loops, one sensor-to-estimator map
 
-![Four PX4 execution loops and OS services with horizontal causal handoffs](diagrams/execution-map.svg)
+![Four PX4 processing loops with separate data and wakeup paths](diagrams/execution-map.svg)
 
 [Editable D2](diagrams/execution-map.d2) · [Full-size SVG](diagrams/execution-map.svg)
 
-The sequence view keeps one lifeline for each A-D context plus IRQ/OS services, which are **not a fifth processing loop**. Messages run horizontally below the header boxes. Teal messages combine a topic handoff with its scheduling annotation; the overview above separates those wires. IMU and GNSS are separate causal examples, not a global event order or measured timing trace. [Driver ISR][icm] · [Worker][worker] · [Callback][callback] · [EKF2][ekf]
+This is the timeline/lifeline-style map: IRQ/OS services plus the A-D execution columns, followed by the IMU and GNSS propagation traces. A-C run `WorkQueue::Run()`; D owns `GPS::run()`. Teal is retained uORB data, orange dashed is scheduling/wakeup, and grey is device/OS I/O. GNSS arrival does not add a GNSS-triggered EKF wake in the shown single-estimator path.
 
-All three use the same pinned single-estimator, NuttX flat-build example. PX4 `wq:*` workers are not NuttX HPWORK/LPWORK, and the logical OS/application split is not a protected address-space boundary. These maps use a **1500 px standalone reading width** (minimum rendered text approximately 14.6–17.2 px), not an 800 px thumbnail readability claim. [Layout measurements and reproduction](diagrams/README.md)
+All three are source diagrams, not raster images embedded in D2. They describe the concrete single-estimator example pinned to PX4 `b798249a`; exact contexts depend on board and configuration.
 
 ## The essential distinction
 

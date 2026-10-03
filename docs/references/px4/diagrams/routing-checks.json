@@ -1,0 +1,17 @@
+{
+  "baseline_commit": "3079e37816daa5c7143d75ea85ef6933d4a4a19d",
+  "routing": [
+    {
+      "name": "sensor-to-ekf-execution-map",
+      "node_groups_unchanged": 38,
+      "edges_routed": 19,
+      "block_interior_intersections": []
+    },
+    {
+      "name": "execution-loops-data-flow",
+      "node_groups_unchanged": 36,
+      "edges_routed": 28,
+      "block_interior_intersections": []
+    }
+  ]
+}
