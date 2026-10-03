@@ -1,0 +1,57 @@
+name: PX4 spacing-balanced diagram render (temporary)
+on:
+  push:
+    branches: [docs/px4-layout-v2-render]
+    paths:
+      - 'docs/references/px4/diagrams/**'
+      - '.github/workflows/px4-layout-v2-render.yml'
+permissions:
+  contents: read
+jobs:
+  render:
+    if: github.repository == 'yongkyuns/nxrs'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install checksum-verified D2 v0.9.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/d2"
+          curl --fail --location --retry 2 https://github.com/d2lang/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz -o "$RUNNER_TEMP/d2.tar.gz"
+          echo "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9  $RUNNER_TEMP/d2.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/d2.tar.gz" -C "$RUNNER_TEMP/d2"
+          binary="$(find "$RUNNER_TEMP/d2" -type f -name d2 -print -quit)"
+          echo "D2=$binary" >> "$GITHUB_ENV"
+          "$binary" --version
+      - name: Render and validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n docs/references/px4/diagrams/render.sh
+          D2="$D2" bash docs/references/px4/diagrams/render.sh
+          test "$(git hash-object docs/references/px4/diagrams/execution-map.svg)" = b209ef596085827de38a093f96d11700b359b54f
+          python3 - <<'PY'
+          import json
+          r=json.load(open('docs/references/px4/diagrams/routing-checks.json'))
+          assert all(not x['block_interior_intersections'] for x in r['routing'])
+          assert [x['edges_routed'] for x in r['routing']]==[19,28]
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: px4-layout-v2
+          path: docs/references/px4/diagrams/
+      - name: Commit generated outputs on temporary branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -f -- docs/references/px4/diagrams/sensor-to-ekf-execution-map.svg docs/references/px4/diagrams/execution-loops-data-flow.svg docs/references/px4/diagrams/layout-metrics.json docs/references/px4/diagrams/routing-checks.json
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: render spacing-balanced PX4 diagrams'
+          git push origin HEAD:refs/heads/docs/px4-layout-v2-render

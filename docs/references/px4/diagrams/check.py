@@ -14,7 +14,7 @@ for src in sorted(HERE.glob('*.d2')):
         if m:fonts.append(float(m.group(1)))
         elif t.get('font-size'):fonts.append(float(t.get('font-size').removesuffix('px')))
     assert fonts and w>h,(src,'not landscape or missing font sizes')
-    reading={'sensor-to-ekf-execution-map':1800,'execution-loops-data-flow':2800,'execution-map':1000,'imu-to-ekf':1200,'gnss-to-ekf':1200}.get(src.stem,800)
+    reading={'sensor-to-ekf-execution-map':2100,'execution-loops-data-flow':3300,'execution-map':1000,'imu-to-ekf':1200,'gnss-to-ekf':1200}.get(src.stem,800)
     scale=min(1,reading/w);assert min(fonts)*scale>=14,(src,'small text at documented reading width')
     assert not list(root.iter('{http://www.w3.org/2000/svg}image')),(src,'embedded raster')
     rows.append(dict(name=src.stem,width=w,height=h,height_at_800=round(h*min(1,800/w),1),min_font_at_800=round(min(fonts)*min(1,800/w),1),reading_width=reading,height_at_reading_width=round(h*scale,1),min_font_at_reading_width=round(min(fonts)*scale,1)))
